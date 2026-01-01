@@ -1,5 +1,11 @@
 export type Currency = "EUR" | "USD" | "TRY";
 
+export const CURRENCY_SYMBOLS: Record<Currency, string> = {
+  EUR: "€",
+  USD: "$",
+  TRY: "₺",
+};
+
 export interface Item {
   id: string;
   name: string;

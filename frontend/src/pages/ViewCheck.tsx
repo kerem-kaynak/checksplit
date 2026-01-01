@@ -10,13 +10,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { getCheck, claimSubItem, getCheckSummary } from "@/services/api";
-import type { Check, CheckSummary, Currency, Item } from "@/types";
-
-const CURRENCY_SYMBOLS: Record<Currency, string> = {
-  EUR: "€",
-  USD: "$",
-  TRY: "₺",
-};
+import { CURRENCY_SYMBOLS, type Check, type CheckSummary, type Item } from "@/types";
 
 function getStoredName(code: string): string | null {
   return localStorage.getItem(`checksplit_name_${code}`);

@@ -3,16 +3,11 @@ import secrets
 import string
 from datetime import datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING
-
 from sqlalchemy import String, Numeric, DateTime, ForeignKey, Integer, func
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
-
-if TYPE_CHECKING:
-    from app.models.check import Item
 
 
 def generate_code() -> str:
@@ -67,8 +62,3 @@ class Item(Base):
     @property
     def total_price(self) -> Decimal:
         return self.unit_price * self.quantity
-
-    def initialize_claims(self) -> None:
-        """Initialize empty claims dict for all sub-items."""
-        if not self.claims:
-            self.claims = {str(i): [] for i in range(self.quantity)}

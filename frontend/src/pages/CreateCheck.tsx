@@ -6,13 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { createCheck } from "@/services/api";
-import type { Currency, ItemCreate } from "@/types";
-
-const CURRENCY_SYMBOLS: Record<Currency, string> = {
-  EUR: "€",
-  USD: "$",
-  TRY: "₺",
-};
+import { CURRENCY_SYMBOLS, type Currency, type ItemCreate } from "@/types";
 
 interface LocationState {
   items?: ItemCreate[];

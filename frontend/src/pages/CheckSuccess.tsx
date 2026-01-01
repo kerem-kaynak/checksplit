@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { Share2, Copy, Link, Eye } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -11,10 +12,12 @@ export function CheckSuccess() {
 
   const handleCopyCode = async () => {
     await navigator.clipboard.writeText(code || "");
+    toast.success("Code copied to clipboard");
   };
 
   const handleCopyLink = async () => {
     await navigator.clipboard.writeText(shareUrl);
+    toast.success("Link copied to clipboard");
   };
 
   const handleShare = async () => {

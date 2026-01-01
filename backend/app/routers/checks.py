@@ -33,6 +33,20 @@ def item_to_response(item: Item) -> ItemResponse:
     )
 
 
+def check_to_response(check: Check) -> CheckResponse:
+    """Convert Check model to CheckResponse."""
+    return CheckResponse(
+        id=check.id,
+        code=check.code,
+        title=check.title,
+        description=check.description,
+        currency=check.currency,
+        tip_amount=check.tip_amount,
+        created_at=check.created_at,
+        items=[item_to_response(item) for item in check.items],
+    )
+
+
 @router.post("", response_model=CheckResponse)
 def create_check(check_data: CheckCreate, db: Session = Depends(get_db)) -> CheckResponse:
     """Create a new check with items."""
@@ -61,16 +75,7 @@ def create_check(check_data: CheckCreate, db: Session = Depends(get_db)) -> Chec
     db.commit()
     db.refresh(check)
 
-    return CheckResponse(
-        id=check.id,
-        code=check.code,
-        title=check.title,
-        description=check.description,
-        currency=check.currency,
-        tip_amount=check.tip_amount,
-        created_at=check.created_at,
-        items=[item_to_response(item) for item in check.items],
-    )
+    return check_to_response(check)
 
 
 @router.get("/{code}", response_model=CheckResponse)
@@ -80,16 +85,7 @@ def get_check(code: str, db: Session = Depends(get_db)) -> CheckResponse:
     if not check:
         raise HTTPException(status_code=404, detail="Check not found")
 
-    return CheckResponse(
-        id=check.id,
-        code=check.code,
-        title=check.title,
-        description=check.description,
-        currency=check.currency,
-        tip_amount=check.tip_amount,
-        created_at=check.created_at,
-        items=[item_to_response(item) for item in check.items],
-    )
+    return check_to_response(check)
 
 
 @router.patch("/{code}", response_model=CheckResponse)
@@ -125,16 +121,7 @@ def update_check(
     db.commit()
     db.refresh(check)
 
-    return CheckResponse(
-        id=check.id,
-        code=check.code,
-        title=check.title,
-        description=check.description,
-        currency=check.currency,
-        tip_amount=check.tip_amount,
-        created_at=check.created_at,
-        items=[item_to_response(item) for item in check.items],
-    )
+    return check_to_response(check)
 
 
 @router.post("/{code}/claim", response_model=CheckResponse)
@@ -181,16 +168,7 @@ def claim_item(
     db.commit()
     db.refresh(check)
 
-    return CheckResponse(
-        id=check.id,
-        code=check.code,
-        title=check.title,
-        description=check.description,
-        currency=check.currency,
-        tip_amount=check.tip_amount,
-        created_at=check.created_at,
-        items=[item_to_response(i) for i in check.items],
-    )
+    return check_to_response(check)
 
 
 @router.get("/{code}/summary", response_model=CheckSummary)
@@ -240,16 +218,7 @@ def get_check_summary(code: str, db: Session = Depends(get_db)) -> CheckSummary:
     participants.sort(key=lambda p: p.name)
 
     return CheckSummary(
-        check=CheckResponse(
-            id=check.id,
-            code=check.code,
-            title=check.title,
-            description=check.description,
-            currency=check.currency,
-            tip_amount=check.tip_amount,
-            created_at=check.created_at,
-            items=[item_to_response(item) for item in check.items],
-        ),
+        check=check_to_response(check),
         participants=participants,
         unclaimed_total=unclaimed_total.quantize(Decimal("0.01")),
     )

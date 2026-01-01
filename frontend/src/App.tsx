@@ -7,22 +7,26 @@ import { CheckSuccess } from "@/pages/CheckSuccess";
 import { ViewCheck } from "@/pages/ViewCheck";
 import { EditCheck } from "@/pages/EditCheck";
 import { PageTransition } from "@/components/PageTransition";
+import { Toaster } from "@/components/ui/sonner";
 
 function App() {
   const location = useLocation();
 
   return (
-    <PageTransition key={location.pathname}>
-      <Routes location={location}>
-        <Route path="/" element={<Home />} />
-        <Route path="/create" element={<CreateCheck />} />
-        <Route path="/create/scan" element={<ScanReceipt />} />
-        <Route path="/join" element={<JoinCheck />} />
-        <Route path="/check/:code/success" element={<CheckSuccess />} />
-        <Route path="/check/:code/edit" element={<EditCheck />} />
-        <Route path="/check/:code" element={<ViewCheck />} />
-      </Routes>
-    </PageTransition>
+    <>
+      <PageTransition key={location.pathname}>
+        <Routes location={location}>
+          <Route path="/" element={<Home />} />
+          <Route path="/create" element={<CreateCheck />} />
+          <Route path="/create/scan" element={<ScanReceipt />} />
+          <Route path="/join" element={<JoinCheck />} />
+          <Route path="/check/:code/success" element={<CheckSuccess />} />
+          <Route path="/check/:code/edit" element={<EditCheck />} />
+          <Route path="/check/:code" element={<ViewCheck />} />
+        </Routes>
+      </PageTransition>
+      <Toaster />
+    </>
   );
 }
 

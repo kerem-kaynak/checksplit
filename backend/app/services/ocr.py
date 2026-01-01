@@ -1,12 +1,16 @@
 import base64
+import logging
 from decimal import Decimal
 
+from fastapi import HTTPException
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
 
 from app.config import settings
 from app.schemas.check import OCRItem, OCRResponse
+
+logger = logging.getLogger(__name__)
 
 
 class ReceiptItem(BaseModel):
@@ -71,34 +75,43 @@ def parse_receipt_image(image_data: bytes, mime_type: str) -> OCRResponse:
 
     Returns:
         OCRResponse containing extracted items
+
+    Raises:
+        HTTPException: If OCR processing fails
     """
     client = genai.Client(api_key=settings.gemini_api_key)
-
     image_base64 = base64.b64encode(image_data).decode("utf-8")
 
-    response = client.models.generate_content(
-        model="gemini-3-flash-preview",
-        contents=[
-            {
-                "role": "user",
-                "parts": [
-                    {"text": RECEIPT_EXTRACTION_PROMPT},
-                    {
-                        "inline_data": {
-                            "mime_type": mime_type,
-                            "data": image_base64,
-                        }
-                    },
-                ],
-            }
-        ],
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=ReceiptData,
-        ),
-    )
+    try:
+        response = client.models.generate_content(
+            model="gemini-3-flash-preview",
+            contents=[
+                {
+                    "role": "user",
+                    "parts": [
+                        {"text": RECEIPT_EXTRACTION_PROMPT},
+                        {
+                            "inline_data": {
+                                "mime_type": mime_type,
+                                "data": image_base64,
+                            }
+                        },
+                    ],
+                }
+            ],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=ReceiptData,
+            ),
+        )
+    except Exception as e:
+        logger.error(f"Gemini API error: {e}")
+        raise HTTPException(status_code=502, detail="Failed to process receipt image")
 
-    receipt_data: ReceiptData = response.parsed
+    receipt_data = response.parsed
+    if receipt_data is None:
+        logger.error("Gemini returned empty response")
+        raise HTTPException(status_code=422, detail="Could not extract items from receipt")
 
     items: list[OCRItem] = []
     for item in receipt_data.items:
