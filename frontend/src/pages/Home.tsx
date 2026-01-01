@@ -7,7 +7,10 @@ export function Home() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">
-      <h1 className="text-3xl font-bold mb-8">checksplit</h1>
+      <div className="flex items-center gap-3 mb-8">
+        <img src="/favicon.svg" alt="Checksplit logo" className="h-10 w-10" />
+        <h1 className="text-3xl font-bold">Checksplit</h1>
+      </div>
       <div className="flex flex-col gap-4 w-full max-w-xs">
         <Button
           size="lg"

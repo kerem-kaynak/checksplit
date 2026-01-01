@@ -30,7 +30,7 @@ export function JoinCheck() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">
-      <h1 className="text-2xl font-bold mb-8">Join Checksplit</h1>
+      <h1 className="text-2xl font-bold mb-8">Join a Checksplit</h1>
 
       <form onSubmit={handleSubmit} className="w-full max-w-xs">
         <div className="mb-4">

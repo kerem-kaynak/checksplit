@@ -138,7 +138,7 @@ export function CreateCheck() {
   if (step === "choose") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <h1 className="text-2xl font-bold mb-8">Create Checksplit</h1>
+        <h1 className="text-2xl font-bold mb-8">Create a Checksplit</h1>
         <div className="flex flex-col gap-4 w-full max-w-xs">
           <Button
             size="lg"
@@ -369,7 +369,7 @@ export function CreateCheck() {
               ) : (
                 <>
                   <Check className="h-4 w-4 mr-2" />
-                  Create Checksplit
+                  Create a Checksplit
                 </>
               )}
             </Button>
