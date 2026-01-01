@@ -1,6 +1,6 @@
 # Checksplit
 
-A web app for splitting restaurant checks with friends. Scan a receipt or manually enter items, share a code, and everyone claims what they ordered.
+An app for splitting restaurant checks with friends. Scan a receipt or manually enter items, share a code, and everyone claims what they ordered.
 
 **Live Demo:** [checksplit.kak.dev](https://checksplit.kak.dev)
 
