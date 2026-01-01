@@ -159,7 +159,7 @@ export function EditCheck() {
   }
 
   return (
-    <div className="min-h-screen p-4 pb-56">
+    <div className="min-h-screen p-4 pt-12 pb-56">
       <div className="max-w-md mx-auto">
         <div className="flex items-center gap-4 mb-6">
           <Button variant="ghost" size="icon" onClick={() => navigate(`/check/${code}`)}>

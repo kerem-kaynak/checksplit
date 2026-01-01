@@ -195,7 +195,7 @@ export function ViewCheck() {
   }
 
   return (
-    <div className="min-h-screen p-4 pb-48">
+    <div className="min-h-screen p-4 pt-12 pb-48">
       <div className="max-w-md mx-auto">
         <div className="flex items-center justify-between mb-4">
           <div>

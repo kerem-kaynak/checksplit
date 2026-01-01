@@ -122,7 +122,7 @@ export function ScanReceipt() {
   const isMobile = typeof window !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   return (
-    <div className="min-h-screen p-4">
+    <div className="min-h-screen p-4 pt-12">
       <div className="max-w-md mx-auto">
         <h1 className="text-2xl font-bold mb-2">Scan Receipt</h1>
         <p className="text-muted-foreground mb-6">

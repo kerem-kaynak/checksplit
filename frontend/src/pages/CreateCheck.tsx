@@ -170,7 +170,7 @@ export function CreateCheck() {
   }
 
   return (
-    <div className="min-h-screen p-4 pb-56">
+    <div className="min-h-screen p-4 pt-12 pb-56">
       <div className="max-w-md mx-auto">
         <h1 className="text-2xl font-bold mb-6">Edit Items</h1>
 
