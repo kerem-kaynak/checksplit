@@ -50,17 +50,26 @@ const flows: Flow[] = [
         ],
       },
       {
-        title: "3. Create and share",
-        description: "Once everything looks good, create your checksplit. You'll get a 6-character code to share with your friends.",
+        title: "3. Add payment methods",
+        description: "Set up how you want to receive payments. You can add your bank account, PayPal, or other payment instructions.",
         tips: [
-          "Add a title to help everyone identify the check",
-          "Use the description for payment details (e.g., your IBAN)",
-          "Add a tip amount if you want to split it fairly",
-          "Share via the share button, or copy the code/link",
+          "Bank transfers generate a QR code that others can scan with their banking app",
+          "PayPal links automatically include the amount owed",
+          "You can add multiple payment methods",
+          "At least one payment method is required",
         ],
       },
       {
-        title: "4. Claim your own items",
+        title: "4. Create and share",
+        description: "Once everything looks good, create your checksplit. You'll get a 6-character code to share with your friends.",
+        tips: [
+          "Add a title to help everyone identify the check",
+          "Add a tip amount if you want to split it fairly",
+          "Share via the Copy Link button, or just share the code",
+        ],
+      },
+      {
+        title: "5. Claim your own items",
         description: "Don't forget to claim the items you ordered! Join your own checksplit and tap on what you had.",
         tips: [
           "Your name is saved for this checksplit, so you won't need to enter it again",
@@ -90,6 +99,16 @@ const flows: Flow[] = [
           "Each portion of an item can be claimed by a different person",
           "Check the summary tab to see what everyone owes",
           "Your share of the tip is calculated automatically based on what you claimed",
+        ],
+      },
+      {
+        title: "3. Pay your share",
+        description: "Once you've claimed your items, tap the Pay Now button to see payment options and your total amount owed.",
+        tips: [
+          "Scan the QR code with your banking app to pay instantly",
+          "PayPal links open with the exact amount pre-filled",
+          "Make sure everyone has claimed their items before paying - unclaimed items affect tip calculations",
+          "You can download the QR code to pay later",
         ],
       },
     ],

@@ -230,6 +230,9 @@ export function PaymentPage() {
                 <p className="text-sm text-center text-muted-foreground">
                   Scan this QR code with your banking app to pay instantly
                 </p>
+                <p className="text-xs text-center text-muted-foreground/70">
+                  This is a SEPA QR code and only works with European banks that support it.
+                </p>
                 <Button
                   variant="outline"
                   className="w-full"

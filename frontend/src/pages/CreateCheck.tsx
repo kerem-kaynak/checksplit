@@ -22,6 +22,22 @@ interface LocalItem {
   priceMode: "unit" | "total";
 }
 
+function normalizePaypalUrl(url: string): string {
+  let normalized = url.trim();
+  // Remove trailing slash
+  normalized = normalized.replace(/\/$/, "");
+  // Add https:// if no protocol
+  if (!normalized.match(/^https?:\/\//i)) {
+    normalized = "https://" + normalized;
+  }
+  return normalized;
+}
+
+function isValidPaypalUrl(url: string): boolean {
+  const normalized = normalizePaypalUrl(url);
+  return /^https?:\/\/paypal\.me\/[\w-]+$/i.test(normalized);
+}
+
 function calculatePrices(item: LocalItem): { unit_price: string; total_price: string } {
   if (item.priceMode === "unit") {
     const unit = parseFloat(item.unit_price) || 0;
@@ -121,9 +137,15 @@ export function CreateCheck() {
       return;
     }
 
-    if (paypalEnabled && !paypalUrl.trim()) {
-      setError("Fill in PayPal.me URL");
-      return;
+    if (paypalEnabled) {
+      if (!paypalUrl.trim()) {
+        setError("Fill in PayPal.me URL");
+        return;
+      }
+      if (!isValidPaypalUrl(paypalUrl)) {
+        setError("Invalid PayPal.me URL. It should look like: paypal.me/yourname");
+        return;
+      }
     }
 
     if (otherEnabled && !otherText.trim()) {
@@ -141,7 +163,7 @@ export function CreateCheck() {
     }
     if (paypalEnabled) {
       paymentMethods.paypal = {
-        url: paypalUrl.trim(),
+        url: normalizePaypalUrl(paypalUrl),
       };
     }
     if (otherEnabled) {
