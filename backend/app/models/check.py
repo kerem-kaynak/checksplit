@@ -26,8 +26,9 @@ class Check(Base):
         String(6), unique=True, index=True, default=generate_code
     )
     title: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    description: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     currency: Mapped[str] = mapped_column(String(3), default="EUR")
+    # Payment methods: {"bank": {"account_holder": "...", "iban": "..."}, "paypal": {"url": "..."}, "other": {"text": "..."}}
+    payment_methods: Mapped[dict] = mapped_column(JSONB, default=dict)
     tip_amount: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), default=Decimal("0.00")
     )

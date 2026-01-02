@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronRight, RefreshCw, ShoppingCart, PieChart, Home, ArrowRight, Loader2, User, Share2 } from "lucide-react";
+import { ChevronDown, ChevronRight, RefreshCw, ShoppingCart, PieChart, Home, ArrowRight, Loader2, User, Share2, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -185,9 +185,6 @@ export function ViewCheck() {
             <h1 className="text-2xl font-bold mb-2">
               {check.title ? `Join ${check.title}` : `Join Check ${code}`}
             </h1>
-            {check.description && (
-              <p className="text-muted-foreground mb-2">{check.description}</p>
-            )}
             <p className="text-muted-foreground">Enter your name to start claiming items</p>
           </div>
 
@@ -232,11 +229,7 @@ export function ViewCheck() {
           </div>
         </div>
 
-        {check.description ? (
-          <p className="text-sm text-muted-foreground mb-6">{check.description}</p>
-        ) : (
-          <div className="mb-2" />
-        )}
+        <div className="mb-2" />
 
         <div className="flex gap-2 mb-6">
           <Button
@@ -467,6 +460,20 @@ export function ViewCheck() {
                 {symbol}{(check.items.reduce((sum, item) => sum + parseFloat(item.total_price), 0) + parseFloat(check.tip_amount)).toFixed(2)}
               </p>
             </div>
+            {check.payment_methods && (
+              <Button
+                className="w-full mt-4"
+                disabled={parseFloat(myParticipant.total) === 0}
+                onClick={() =>
+                  navigate(
+                    `/check/${code}/pay?amount=${myParticipant.total}&name=${encodeURIComponent(participantName)}`
+                  )
+                }
+              >
+                <CreditCard className="h-4 w-4 mr-2" />
+                Pay Now
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}

@@ -5,6 +5,31 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
+class BankAccount(BaseModel):
+    account_holder: str = Field(..., min_length=1, max_length=70)
+    iban: str = Field(..., min_length=15, max_length=34)
+
+
+class PayPalMethod(BaseModel):
+    url: str = Field(..., pattern=r"^https?://paypal\.me/[\w-]+$")
+
+
+class OtherMethod(BaseModel):
+    text: str = Field(..., min_length=1, max_length=500)
+
+
+class PaymentMethods(BaseModel):
+    bank: BankAccount | None = None
+    paypal: PayPalMethod | None = None
+    other: OtherMethod | None = None
+
+    @model_validator(mode="after")
+    def at_least_one_method(self) -> "PaymentMethods":
+        if not any([self.bank, self.paypal, self.other]):
+            raise ValueError("At least one payment method is required")
+        return self
+
+
 class ItemCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     quantity: int = Field(default=1, ge=1)
@@ -40,7 +65,7 @@ class CheckBase(BaseModel):
 
 class CheckCreate(CheckBase):
     title: str | None = Field(None, max_length=255)
-    description: str | None = Field(None, max_length=1000)
+    payment_methods: PaymentMethods
     items: list[ItemCreate]
 
 
@@ -54,7 +79,7 @@ class CheckResponse(CheckBase):
     id: UUID
     code: str
     title: str | None
-    description: str | None
+    payment_methods: PaymentMethods | None
     created_at: datetime
     items: list[ItemResponse]
 

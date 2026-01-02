@@ -15,6 +15,7 @@ from app.schemas.check import (
     ParticipantSummary,
     OCRResponse,
     ItemResponse,
+    PaymentMethods,
 )
 from app.services.ocr import parse_receipt_image
 
@@ -35,11 +36,16 @@ def item_to_response(item: Item) -> ItemResponse:
 
 def check_to_response(check: Check) -> CheckResponse:
     """Convert Check model to CheckResponse."""
+    # Convert stored dict to PaymentMethods schema
+    payment_methods = None
+    if check.payment_methods:
+        payment_methods = PaymentMethods.model_validate(check.payment_methods)
+
     return CheckResponse(
         id=check.id,
         code=check.code,
         title=check.title,
-        description=check.description,
+        payment_methods=payment_methods,
         currency=check.currency,
         tip_amount=check.tip_amount,
         created_at=check.created_at,
@@ -52,7 +58,7 @@ def create_check(check_data: CheckCreate, db: Session = Depends(get_db)) -> Chec
     """Create a new check with items."""
     check = Check(
         title=check_data.title,
-        description=check_data.description,
+        payment_methods=check_data.payment_methods.model_dump(exclude_none=True),
         currency=check_data.currency,
         tip_amount=check_data.tip_amount,
     )

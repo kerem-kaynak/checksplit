@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Plus, Minus, Trash2, ScanLine, PenLine, ArrowLeft, Loader2, Check } from "lucide-react";
+import { Plus, Minus, Trash2, ScanLine, PenLine, ArrowLeft, Loader2, Check, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { createCheck } from "@/services/api";
-import { CURRENCY_SYMBOLS, type Currency, type ItemCreate } from "@/types";
+import { CURRENCY_SYMBOLS, type Currency, type ItemCreate, type PaymentMethods } from "@/types";
 
 interface LocationState {
   items?: ItemCreate[];
@@ -49,9 +50,17 @@ export function CreateCheck() {
   const [currency, setCurrency] = useState<Currency>(state?.currency || "EUR");
   const [tipAmount, setTipAmount] = useState("");
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Payment methods state
+  const [bankEnabled, setBankEnabled] = useState(false);
+  const [accountHolder, setAccountHolder] = useState("");
+  const [iban, setIban] = useState("");
+  const [paypalEnabled, setPaypalEnabled] = useState(false);
+  const [paypalUrl, setPaypalUrl] = useState("");
+  const [otherEnabled, setOtherEnabled] = useState(false);
+  const [otherText, setOtherText] = useState("");
 
   useEffect(() => {
     if (state?.items) {
@@ -101,6 +110,46 @@ export function CreateCheck() {
       return;
     }
 
+    // Validate payment methods
+    if (!bankEnabled && !paypalEnabled && !otherEnabled) {
+      setError("Add at least one payment method");
+      return;
+    }
+
+    if (bankEnabled && (!accountHolder.trim() || !iban.trim())) {
+      setError("Fill in account holder name and IBAN for bank transfer");
+      return;
+    }
+
+    if (paypalEnabled && !paypalUrl.trim()) {
+      setError("Fill in PayPal.me URL");
+      return;
+    }
+
+    if (otherEnabled && !otherText.trim()) {
+      setError("Fill in payment instructions");
+      return;
+    }
+
+    // Build payment methods object
+    const paymentMethods: PaymentMethods = {};
+    if (bankEnabled) {
+      paymentMethods.bank = {
+        account_holder: accountHolder.trim(),
+        iban: iban.trim().replace(/\s/g, "").toUpperCase(),
+      };
+    }
+    if (paypalEnabled) {
+      paymentMethods.paypal = {
+        url: paypalUrl.trim(),
+      };
+    }
+    if (otherEnabled) {
+      paymentMethods.other = {
+        text: otherText.trim(),
+      };
+    }
+
     setIsLoading(true);
     setError(null);
     try {
@@ -115,7 +164,7 @@ export function CreateCheck() {
 
       const check = await createCheck({
         title: title.trim() || undefined,
-        description: description.trim() || undefined,
+        payment_methods: paymentMethods,
         currency,
         tip_amount: tipAmount || "0",
         items: itemsToCreate,
@@ -187,17 +236,120 @@ export function CreateCheck() {
               maxLength={255}
             />
           </div>
-          <div>
-            <Label htmlFor="description" className="mb-2 block">
-              Description (optional)
-            </Label>
-            <Input
-              id="description"
-              placeholder="IBAN: DE 26 0000..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              maxLength={1000}
-            />
+        </div>
+
+        <div className="mb-6">
+          <Label className="mb-3 block">Payment Methods</Label>
+          <p className="text-sm text-muted-foreground mb-4">
+            Add at least one way for others to pay you back
+          </p>
+
+          <div className="space-y-4">
+            {/* Bank Transfer */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <Checkbox
+                    id="bank-enabled"
+                    checked={bankEnabled}
+                    onCheckedChange={(checked) => setBankEnabled(checked === true)}
+                  />
+                  <Label htmlFor="bank-enabled" className="font-medium cursor-pointer">
+                    Bank Transfer
+                  </Label>
+                </div>
+                {bankEnabled && (
+                  <div className="space-y-3 pl-7">
+                    <div>
+                      <Label htmlFor="account-holder" className="text-sm mb-1 block">
+                        Account Holder Name
+                      </Label>
+                      <Input
+                        id="account-holder"
+                        placeholder="John Doe"
+                        value={accountHolder}
+                        onChange={(e) => setAccountHolder(e.target.value)}
+                        maxLength={70}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="iban" className="text-sm mb-1 block">
+                        IBAN
+                      </Label>
+                      <Input
+                        id="iban"
+                        placeholder="DE89 3704 0044 0532 0130 00"
+                        value={iban}
+                        onChange={(e) => setIban(e.target.value)}
+                        maxLength={34}
+                      />
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* PayPal */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <Checkbox
+                    id="paypal-enabled"
+                    checked={paypalEnabled}
+                    onCheckedChange={(checked) => setPaypalEnabled(checked === true)}
+                  />
+                  <Label htmlFor="paypal-enabled" className="font-medium cursor-pointer">
+                    PayPal
+                  </Label>
+                </div>
+                {paypalEnabled && (
+                  <div className="pl-7">
+                    <Label htmlFor="paypal-url" className="text-sm mb-1 block">
+                      PayPal.me URL
+                    </Label>
+                    <Input
+                      id="paypal-url"
+                      placeholder="https://paypal.me/yourname"
+                      value={paypalUrl}
+                      onChange={(e) => setPaypalUrl(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Find your link at paypal.me
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Other */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <Checkbox
+                    id="other-enabled"
+                    checked={otherEnabled}
+                    onCheckedChange={(checked) => setOtherEnabled(checked === true)}
+                  />
+                  <Label htmlFor="other-enabled" className="font-medium cursor-pointer">
+                    Other
+                  </Label>
+                </div>
+                {otherEnabled && (
+                  <div className="pl-7">
+                    <Label htmlFor="other-text" className="text-sm mb-1 block">
+                      Payment Instructions
+                    </Label>
+                    <Input
+                      id="other-text"
+                      placeholder="Venmo: @yourname, Cash App: $yourname, etc."
+                      value={otherText}
+                      onChange={(e) => setOtherText(e.target.value)}
+                      maxLength={500}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
 

@@ -6,6 +6,25 @@ export const CURRENCY_SYMBOLS: Record<Currency, string> = {
   TRY: "₺",
 };
 
+export interface BankAccount {
+  account_holder: string;
+  iban: string;
+}
+
+export interface PayPalMethod {
+  url: string;
+}
+
+export interface OtherMethod {
+  text: string;
+}
+
+export interface PaymentMethods {
+  bank?: BankAccount;
+  paypal?: PayPalMethod;
+  other?: OtherMethod;
+}
+
 export interface Item {
   id: string;
   name: string;
@@ -19,7 +38,7 @@ export interface Check {
   id: string;
   code: string;
   title: string | null;
-  description: string | null;
+  payment_methods: PaymentMethods | null;
   currency: Currency;
   tip_amount: string;
   created_at: string;
@@ -35,7 +54,7 @@ export interface ItemCreate {
 
 export interface CheckCreate {
   title?: string;
-  description?: string;
+  payment_methods: PaymentMethods;
   currency: Currency;
   tip_amount: string;
   items: ItemCreate[];
