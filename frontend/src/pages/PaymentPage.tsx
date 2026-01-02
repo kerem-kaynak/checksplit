@@ -73,7 +73,7 @@ export function PaymentPage() {
     loadData();
   }, [code]);
 
-  const handleDownloadQr = () => {
+  const handleDownloadQr = async () => {
     if (!qrRef.current) return;
 
     const svg = qrRef.current.querySelector("svg");
@@ -87,13 +87,35 @@ export function PaymentPage() {
     const svgData = new XMLSerializer().serializeToString(svg);
     const img = new Image();
 
-    img.onload = () => {
+    img.onload = async () => {
       canvas.width = img.width * 2;
       canvas.height = img.height * 2;
       ctx.fillStyle = "white";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
+      // Try to use Web Share API (works on iOS, shows "Save Image" option)
+      if (typeof navigator.canShare === "function" && typeof navigator.share === "function") {
+        try {
+          const blob = await new Promise<Blob>((resolve) => {
+            canvas.toBlob((b) => resolve(b!), "image/png");
+          });
+          const file = new File([blob], `payment-${code}.png`, { type: "image/png" });
+
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: "Payment QR Code",
+            });
+            return;
+          }
+        } catch (err) {
+          // User cancelled or share failed, fall through to download
+          if ((err as Error).name === "AbortError") return;
+        }
+      }
+
+      // Fallback: direct download
       const link = document.createElement("a");
       link.download = `payment-${code}.png`;
       link.href = canvas.toDataURL("image/png");
