@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Plus, Minus, Trash2, ScanLine, PenLine, ArrowLeft, Loader2, Check, HelpCircle } from "lucide-react";
+import { Plus, Minus, Trash2, ScanLine, PenLine, ArrowLeft, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -314,7 +314,15 @@ export function CreateCheck() {
                       onChange={(e) => setPaypalUrl(e.target.value)}
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      Find your link at paypal.me
+                      Find or create your link at{" "}
+                      <a
+                        href="https://www.paypal.com/myaccount/profile/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline hover:text-foreground"
+                      >
+                        paypal.com/myaccount/profile
+                      </a>
                     </p>
                   </div>
                 )}
