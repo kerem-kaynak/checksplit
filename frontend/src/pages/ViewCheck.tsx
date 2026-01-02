@@ -83,6 +83,27 @@ export function ViewCheck() {
     };
   }, [check, code]);
 
+  // Poll for updates every second
+  useEffect(() => {
+    if (!code || !participantName) return;
+
+    const interval = setInterval(async () => {
+      if (isClaiming) return; // Don't poll while claiming
+      try {
+        const [checkData, summaryData] = await Promise.all([
+          getCheck(code),
+          getCheckSummary(code),
+        ]);
+        setCheck(checkData);
+        setSummary(summaryData);
+      } catch {
+        // Silent fail for polling
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [code, participantName, isClaiming]);
+
   const loadCheck = async () => {
     if (!code) return;
     try {
