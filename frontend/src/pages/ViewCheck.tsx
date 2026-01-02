@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronRight, RefreshCw, ShoppingCart, PieChart, Home, ArrowRight, Loader2, User } from "lucide-react";
+import { ChevronDown, ChevronRight, RefreshCw, ShoppingCart, PieChart, Home, ArrowRight, Loader2, User, Share2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -143,6 +144,12 @@ export function ViewCheck() {
     loadCheck();
   };
 
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/check/${code}`;
+    await navigator.clipboard.writeText(shareUrl);
+    toast.success("Link copied to clipboard");
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -213,10 +220,16 @@ export function ViewCheck() {
               <p className="text-sm text-muted-foreground">#{code}</p>
             )}
           </div>
-          <Button variant="outline" size="sm" onClick={handleRefresh}>
-            <RefreshCw className="h-4 w-4 mr-1" />
-            Refresh
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleShare}>
+              <Share2 className="h-4 w-4 mr-1" />
+              Copy Link
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleRefresh}>
+              <RefreshCw className="h-4 w-4 mr-1" />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {check.description ? (
@@ -430,23 +443,6 @@ export function ViewCheck() {
                 </CardContent>
               </Card>
             )}
-
-            <Card className="bg-muted/50">
-              <CardContent className="p-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-medium">Bill Total</p>
-                    <p className="text-xs text-muted-foreground">
-                      Items: {symbol}{check.items.reduce((sum, item) => sum + parseFloat(item.total_price), 0).toFixed(2)}
-                      {parseFloat(check.tip_amount) > 0 && ` + Tip: ${symbol}${check.tip_amount}`}
-                    </p>
-                  </div>
-                  <p className="text-xl font-bold">
-                    {symbol}{(check.items.reduce((sum, item) => sum + parseFloat(item.total_price), 0) + parseFloat(check.tip_amount)).toFixed(2)}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         )}
       </div>
@@ -463,6 +459,12 @@ export function ViewCheck() {
               </div>
               <p className="text-3xl font-bold">
                 {symbol}{myParticipant.total}
+              </p>
+            </div>
+            <div className="flex justify-between items-center pt-2 mt-2 border-t text-muted-foreground text-sm">
+              <p>Bill total{parseFloat(check.tip_amount) > 0 && " (incl. tip)"}</p>
+              <p className="font-medium">
+                {symbol}{(check.items.reduce((sum, item) => sum + parseFloat(item.total_price), 0) + parseFloat(check.tip_amount)).toFixed(2)}
               </p>
             </div>
           </CardContent>
