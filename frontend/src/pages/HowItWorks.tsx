@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronDown, ChevronRight, ScanLine, PenLine, Share2, Users, Lightbulb } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, ScanLine, Users, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
