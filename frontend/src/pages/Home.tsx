@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Receipt, Users } from "lucide-react";
+import { Receipt, Users, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function Home() {
@@ -28,6 +28,14 @@ export function Home() {
         >
           <Users className="h-5 w-5 mr-2" />
           Join with Code
+        </Button>
+        <Button
+          variant="ghost"
+          className="w-full"
+          onClick={() => navigate("/how-it-works")}
+        >
+          <HelpCircle className="h-4 w-4 mr-2" />
+          Learn how it works
         </Button>
       </div>
     </div>

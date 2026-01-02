@@ -6,6 +6,7 @@ import { JoinCheck } from "@/pages/JoinCheck";
 import { CheckSuccess } from "@/pages/CheckSuccess";
 import { ViewCheck } from "@/pages/ViewCheck";
 import { EditCheck } from "@/pages/EditCheck";
+import { HowItWorks } from "@/pages/HowItWorks";
 import { PageTransition } from "@/components/PageTransition";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -17,6 +18,7 @@ function App() {
       <PageTransition key={location.pathname}>
         <Routes location={location}>
           <Route path="/" element={<Home />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/create" element={<CreateCheck />} />
           <Route path="/create/scan" element={<ScanReceipt />} />
           <Route path="/join" element={<JoinCheck />} />

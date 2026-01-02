@@ -421,6 +421,23 @@ export function ViewCheck() {
                 </CardContent>
               </Card>
             )}
+
+            <Card className="bg-muted/50">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-medium">Bill Total</p>
+                    <p className="text-xs text-muted-foreground">
+                      Items: {symbol}{check.items.reduce((sum, item) => sum + parseFloat(item.total_price), 0).toFixed(2)}
+                      {parseFloat(check.tip_amount) > 0 && ` + Tip: ${symbol}${check.tip_amount}`}
+                    </p>
+                  </div>
+                  <p className="text-xl font-bold">
+                    {symbol}{(check.items.reduce((sum, item) => sum + parseFloat(item.total_price), 0) + parseFloat(check.tip_amount)).toFixed(2)}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>
