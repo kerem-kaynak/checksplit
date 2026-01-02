@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Download, ExternalLink, Loader2, Copy, Check } from "lucide-react";
+import { ArrowLeft, Download, ExternalLink, Loader2, Copy, Check, AlertTriangle } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getCheck } from "@/services/api";
-import { CURRENCY_SYMBOLS, type Check as CheckType, type Currency } from "@/types";
+import { getCheck, getCheckSummary } from "@/services/api";
+import { CURRENCY_SYMBOLS, type Check as CheckType, type CheckSummary, type Currency } from "@/types";
 
 function generateEpcQrCode(
   accountHolder: string,
@@ -46,6 +46,7 @@ export function PaymentPage() {
   const participantName = searchParams.get("name") || "";
 
   const [check, setCheck] = useState<CheckType | null>(null);
+  const [summary, setSummary] = useState<CheckSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -54,10 +55,14 @@ export function PaymentPage() {
   useEffect(() => {
     if (!code) return;
 
-    async function loadCheck() {
+    async function loadData() {
       try {
-        const data = await getCheck(code!);
-        setCheck(data);
+        const [checkData, summaryData] = await Promise.all([
+          getCheck(code!),
+          getCheckSummary(code!),
+        ]);
+        setCheck(checkData);
+        setSummary(summaryData);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load check");
       } finally {
@@ -65,7 +70,7 @@ export function PaymentPage() {
       }
     }
 
-    loadCheck();
+    loadData();
   }, [code]);
 
   const handleDownloadQr = () => {
@@ -157,6 +162,19 @@ export function PaymentPage() {
           {participantName && <span className="font-medium">{participantName}, </span>}
           You owe <span className="font-bold text-foreground">{currencySymbol}{formattedAmount}</span>
         </p>
+
+        {summary && parseFloat(summary.unclaimed_total) > 0 && (
+          <div className="bg-destructive/10 border-2 border-destructive/30 rounded-lg p-3 mb-6">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              <p className="text-sm font-bold text-destructive">You are most likely paying the wrong amount!</p>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              There are still {currencySymbol}{summary.unclaimed_total} worth of unclaimed items.
+              Make sure everyone has claimed their items before paying. With unclaimed items, the calculation of your share is likely to be wrong because of tip sharing.
+            </p>
+          </div>
+        )}
 
         {!paymentMethods && (
           <Card>
