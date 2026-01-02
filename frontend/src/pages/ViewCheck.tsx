@@ -73,6 +73,15 @@ export function ViewCheck() {
     loadCheck();
   }, [code]);
 
+  useEffect(() => {
+    if (check) {
+      document.title = check.title ? `${check.title} - Checksplit` : `Check ${code} - Checksplit`;
+    }
+    return () => {
+      document.title = "Checksplit";
+    };
+  }, [check, code]);
+
   const loadCheck = async () => {
     if (!code) return;
     try {
