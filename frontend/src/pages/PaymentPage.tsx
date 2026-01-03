@@ -231,6 +231,9 @@ export function PaymentPage() {
                     level="M"
                   />
                 </div>
+                <p className="text-xs text-center text-muted-foreground/70">
+                  If the download button doesn't work, you can long-press the QR code to save it.
+                </p>
                 {/* Displayed image - can be long-pressed to save on mobile */}
                 <div ref={qrRef} className="flex justify-center bg-white p-4 rounded-lg">
                   {qrImageUrl ? (
@@ -246,13 +249,7 @@ export function PaymentPage() {
                   )}
                 </div>
                 <p className="text-sm text-center text-muted-foreground">
-                  Scan this QR code with your banking app to pay instantly
-                </p>
-                <p className="text-xs text-center text-muted-foreground/70">
-                  This is a SEPA QR code and only works with European banks that support it.
-                </p>
-                <p className="text-xs text-center text-muted-foreground/70">
-                  On Android, you can long-press the QR code to save it to your gallery.
+                  Scan this QR code with your banking app to pay instantly. This is a SEPA QR code and only works with European banks that support it.
                 </p>
                 <Button
                   variant="outline"
