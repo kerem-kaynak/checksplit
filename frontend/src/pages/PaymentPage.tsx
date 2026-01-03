@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Download, ExternalLink, Loader2, Copy, Check, AlertTriangle } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
+import { QRCodeCanvas } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCheck, getCheckSummary } from "@/services/api";
@@ -50,7 +50,25 @@ export function PaymentPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [qrImageUrl, setQrImageUrl] = useState<string | null>(null);
   const qrRef = useRef<HTMLDivElement>(null);
+  const qrCanvasRef = useRef<HTMLDivElement>(null);
+
+  // Convert QR canvas to image URL for long-press saving on mobile
+  useEffect(() => {
+    if (!check?.payment_methods?.bank) return;
+
+    // Small delay to ensure canvas is rendered
+    const timer = setTimeout(() => {
+      if (!qrCanvasRef.current) return;
+      const canvas = qrCanvasRef.current.querySelector("canvas");
+      if (canvas) {
+        setQrImageUrl(canvas.toDataURL("image/png"));
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [check]);
 
   useEffect(() => {
     if (!code) return;
@@ -74,55 +92,40 @@ export function PaymentPage() {
   }, [code]);
 
   const handleDownloadQr = async () => {
-    if (!qrRef.current) return;
+    if (!qrCanvasRef.current) return;
 
-    const svg = qrRef.current.querySelector("svg");
-    if (!svg) return;
+    const canvas = qrCanvasRef.current.querySelector("canvas");
+    if (!canvas) return;
 
-    // Create canvas from SVG
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    // Detect iOS for Web Share API (works best on iOS)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const img = new Image();
+    // On iOS, use Web Share API which has "Save Image" option
+    if (isIOS && typeof navigator.canShare === "function" && typeof navigator.share === "function") {
+      try {
+        const blob = await new Promise<Blob>((resolve) => {
+          canvas.toBlob((b) => resolve(b!), "image/png");
+        });
+        const file = new File([blob], `payment-${code}.png`, { type: "image/png" });
 
-    img.onload = async () => {
-      canvas.width = img.width * 2;
-      canvas.height = img.height * 2;
-      ctx.fillStyle = "white";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-      // Try to use Web Share API (works on iOS, shows "Save Image" option)
-      if (typeof navigator.canShare === "function" && typeof navigator.share === "function") {
-        try {
-          const blob = await new Promise<Blob>((resolve) => {
-            canvas.toBlob((b) => resolve(b!), "image/png");
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: "Payment QR Code",
           });
-          const file = new File([blob], `payment-${code}.png`, { type: "image/png" });
-
-          if (navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: "Payment QR Code",
-            });
-            return;
-          }
-        } catch (err) {
-          // User cancelled or share failed, fall through to download
-          if ((err as Error).name === "AbortError") return;
+          return;
         }
+      } catch (err) {
+        // User cancelled or share failed, fall through to download
+        if ((err as Error).name === "AbortError") return;
       }
+    }
 
-      // Fallback: direct download
-      const link = document.createElement("a");
-      link.download = `payment-${code}.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
-    };
-
-    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+    // Fallback: direct download (for desktop and Android)
+    const link = document.createElement("a");
+    link.download = `payment-${code}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
   };
 
   const handleCopyIban = async (iban: string) => {
@@ -214,8 +217,9 @@ export function PaymentPage() {
                 <CardTitle className="text-lg">Bank Transfer</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div ref={qrRef} className="flex justify-center bg-white p-4 rounded-lg">
-                  <QRCodeSVG
+                {/* Hidden canvas for generating QR */}
+                <div ref={qrCanvasRef} className="hidden">
+                  <QRCodeCanvas
                     value={generateEpcQrCode(
                       paymentMethods.bank.account_holder,
                       paymentMethods.bank.iban,
@@ -223,15 +227,32 @@ export function PaymentPage() {
                       check.currency,
                       check.title || `Checksplit ${code}`
                     )}
-                    size={200}
+                    size={400}
                     level="M"
                   />
+                </div>
+                {/* Displayed image - can be long-pressed to save on mobile */}
+                <div ref={qrRef} className="flex justify-center bg-white p-4 rounded-lg">
+                  {qrImageUrl ? (
+                    <img
+                      src={qrImageUrl}
+                      alt="Payment QR Code"
+                      className="w-[200px] h-[200px]"
+                    />
+                  ) : (
+                    <div className="w-[200px] h-[200px] flex items-center justify-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
                 </div>
                 <p className="text-sm text-center text-muted-foreground">
                   Scan this QR code with your banking app to pay instantly
                 </p>
                 <p className="text-xs text-center text-muted-foreground/70">
                   This is a SEPA QR code and only works with European banks that support it.
+                </p>
+                <p className="text-xs text-center text-muted-foreground/70">
+                  On Android, you can long-press the QR code to save it to your gallery.
                 </p>
                 <Button
                   variant="outline"
@@ -283,7 +304,10 @@ export function PaymentPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">PayPal</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  On a computer, the amount will be pre-filled. On mobile, you may need to enter the amount ({currencySymbol}{formattedAmount}) manually.
+                </p>
                 <Button
                   className="w-full"
                   onClick={() => {

@@ -106,7 +106,7 @@ const flows: Flow[] = [
         description: "Once you've claimed your items, tap the Pay Now button to see payment options and your total amount owed.",
         tips: [
           "Scan the QR code with your banking app to pay instantly",
-          "PayPal links open with the exact amount pre-filled",
+          "PayPal links pre-fill the amount on desktop, but on mobile you may need to enter it manually",
           "Make sure everyone has claimed their items before paying - unclaimed items affect tip calculations",
           "You can download the QR code to pay later",
         ],
