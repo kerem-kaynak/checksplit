@@ -49,6 +49,16 @@ function isItemFullyClaimed(item: Item): boolean {
   return true;
 }
 
+function countClaimedSubItems(item: Item): number {
+  let count = 0;
+  for (let i = 0; i < item.quantity; i++) {
+    if (getSubItemClaimants(item, i).length > 0) {
+      count++;
+    }
+  }
+  return count;
+}
+
 export function ViewCheck() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
@@ -325,13 +335,15 @@ export function ViewCheck() {
                 );
               }
 
+              const totalClaimed = countClaimedSubItems(item);
+
               return (
                 <Collapsible
                   key={item.id}
                   open={isExpanded}
                   onOpenChange={() => handleToggleExpand(item.id)}
                 >
-                  <Card className={`transition-all ${myClaimedCount > 0 ? "border-primary" : ""} ${fullyClaimed && myClaimedCount === 0 ? "opacity-60" : ""}`}>
+                  <Card className={`transition-all ${fullyClaimed ? "opacity-60" : myClaimedCount > 0 ? "border-primary" : ""}`}>
                     <CollapsibleTrigger asChild>
                       <CardContent className="p-4 cursor-pointer">
                         <div className="flex justify-between items-start">
@@ -347,9 +359,9 @@ export function ViewCheck() {
                               </p>
                               <p className="text-xs text-muted-foreground mt-1">
                                 {item.quantity}× @ {symbol}{item.unit_price} each
-                                {myClaimedCount > 0 && (
-                                  <span className="text-primary ml-2">
-                                    ({myClaimedCount} claimed by you)
+                                {totalClaimed > 0 && (
+                                  <span className="ml-2">
+                                    ({totalClaimed}/{item.quantity} claimed{myClaimedCount > 0 && `, ${myClaimedCount} by you`})
                                   </span>
                                 )}
                               </p>
