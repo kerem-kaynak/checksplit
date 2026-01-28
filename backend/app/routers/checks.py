@@ -203,12 +203,12 @@ def get_check_summary(code: str, db: Session = Depends(get_db)) -> CheckSummary:
                         participant_subtotals[name] = Decimal("0.00")
                     participant_subtotals[name] += share
 
-    total_claimed = sum(participant_subtotals.values(), Decimal("0.00"))
+    total_items = sum((item.unit_price * item.quantity for item in check.items), Decimal("0.00"))
 
     participants: list[ParticipantSummary] = []
     for name, subtotal in participant_subtotals.items():
-        if total_claimed > 0:
-            tip_share = (subtotal / total_claimed) * check.tip_amount
+        if total_items > 0:
+            tip_share = (subtotal / total_items) * check.tip_amount
         else:
             tip_share = Decimal("0.00")
 

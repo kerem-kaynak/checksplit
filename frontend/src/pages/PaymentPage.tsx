@@ -189,14 +189,13 @@ export function PaymentPage() {
         </p>
 
         {summary && parseFloat(summary.unclaimed_total) > 0 && (
-          <div className="bg-destructive/10 border-2 border-destructive/30 rounded-lg p-3 mb-6">
+          <div className="bg-yellow-500/10 border-2 border-yellow-500/30 rounded-lg p-3 mb-6">
             <div className="flex items-center gap-2 mb-1">
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-              <p className="text-sm font-bold text-destructive">You are most likely paying the wrong amount!</p>
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <p className="text-sm font-bold text-yellow-600">There are unclaimed items</p>
             </div>
             <p className="text-sm text-muted-foreground">
-              There are still {currencySymbol}{summary.unclaimed_total} worth of unclaimed items.
-              Make sure everyone has claimed their items before paying. With unclaimed items, the calculation of your share is likely to be wrong because of tip sharing.
+              If you shared an item with someone who hasn't claimed yet, your total may be incorrect.
             </p>
           </div>
         )}
