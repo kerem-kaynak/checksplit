@@ -280,13 +280,15 @@ export function PaymentPage() {
         )}
 
         <div className="space-y-4">
-          {/* Bank Transfer with QR Code - Only show when payment currency is EUR */}
-          {paymentMethods?.bank && paymentCurrency === "EUR" && (
+          {/* Bank Transfer */}
+          {paymentMethods?.bank && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Bank Transfer</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+  {paymentCurrency === "EUR" ? (
+                <>
                 {/* Hidden canvas for generating QR */}
                 <div ref={qrCanvasRef} className="hidden">
                   <QRCodeCanvas
@@ -328,6 +330,20 @@ export function PaymentPage() {
                   <Download className="h-4 w-4 mr-2" />
                   Download QR Code
                 </Button>
+                </>
+                ) : (
+                <div className="text-center space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    QR code is only available for EUR payments.
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => setPaymentCurrency("EUR")}
+                  >
+                    Switch to EUR
+                  </Button>
+                </div>
+                )}
 
                 <div className="border-t pt-4 space-y-2">
                   <p className="text-sm text-muted-foreground">Or transfer manually:</p>
@@ -356,28 +372,10 @@ export function PaymentPage() {
                     </div>
                     <p className="text-sm">
                       <span className="text-muted-foreground">Amount:</span>{" "}
-                      <span className="font-medium">€{eurAmount}</span>
+                      <span className="font-medium">{paymentSymbol}{convertedAmount}</span>
                     </p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Bank Transfer unavailable message - when payment currency is not EUR */}
-          {paymentMethods?.bank && paymentCurrency !== "EUR" && (
-            <Card className="border-dashed">
-              <CardContent className="p-4 text-center text-muted-foreground">
-                <p className="text-sm">
-                  Bank transfer QR is only available for EUR payments.{" "}
-                  <Button
-                    variant="link"
-                    className="px-1 h-auto"
-                    onClick={() => setPaymentCurrency("EUR")}
-                  >
-                    Switch to EUR
-                  </Button>
-                </p>
               </CardContent>
             </Card>
           )}

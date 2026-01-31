@@ -54,6 +54,17 @@ def check_to_response(check: Check) -> CheckResponse:
     )
 
 
+@router.get("/exchange-rate")
+async def get_rate(from_currency: str, to_currency: str) -> dict:
+    """Get exchange rate between two currencies using Frankfurter API."""
+    rate = await get_exchange_rate(from_currency.upper(), to_currency.upper())
+    return {
+        "from": from_currency.upper(),
+        "to": to_currency.upper(),
+        "rate": str(rate),
+    }
+
+
 @router.post("", response_model=CheckResponse)
 def create_check(check_data: CheckCreate, db: Session = Depends(get_db)) -> CheckResponse:
     """Create a new check with items."""
@@ -229,17 +240,6 @@ def get_check_summary(code: str, db: Session = Depends(get_db)) -> CheckSummary:
         participants=participants,
         unclaimed_total=unclaimed_total.quantize(Decimal("0.01")),
     )
-
-
-@router.get("/exchange-rate")
-async def get_rate(from_currency: str, to_currency: str) -> dict:
-    """Get exchange rate between two currencies using Frankfurter API."""
-    rate = await get_exchange_rate(from_currency.upper(), to_currency.upper())
-    return {
-        "from": from_currency.upper(),
-        "to": to_currency.upper(),
-        "rate": str(rate),
-    }
 
 
 ALLOWED_IMAGE_TYPES = {
