@@ -11,7 +11,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { getCheck, claimSubItem, getCheckSummary } from "@/services/api";
-import { CURRENCY_SYMBOLS, type Check, type CheckSummary, type Item } from "@/types";
+import { getCurrencySymbol, type Check, type CheckSummary, type Item } from "@/types";
 
 function getStoredName(code: string): string | null {
   return localStorage.getItem(`checksplit_name_${code}`);
@@ -201,7 +201,7 @@ export function ViewCheck() {
     );
   }
 
-  const symbol = CURRENCY_SYMBOLS[check.currency];
+  const symbol = getCurrencySymbol(check.currency);
   const myParticipant = summary?.participants.find((p) => p.name === participantName);
 
   // Show full-page name entry if no name is set

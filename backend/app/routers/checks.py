@@ -18,6 +18,7 @@ from app.schemas.check import (
     PaymentMethods,
 )
 from app.services.ocr import parse_receipt_image
+from app.services.exchange import get_exchange_rate
 
 router = APIRouter(prefix="/api/checks", tags=["checks"])
 
@@ -228,6 +229,17 @@ def get_check_summary(code: str, db: Session = Depends(get_db)) -> CheckSummary:
         participants=participants,
         unclaimed_total=unclaimed_total.quantize(Decimal("0.01")),
     )
+
+
+@router.get("/exchange-rate")
+async def get_rate(from_currency: str, to_currency: str) -> dict:
+    """Get exchange rate between two currencies using Frankfurter API."""
+    rate = await get_exchange_rate(from_currency.upper(), to_currency.upper())
+    return {
+        "from": from_currency.upper(),
+        "to": to_currency.upper(),
+        "rate": str(rate),
+    }
 
 
 ALLOWED_IMAGE_TYPES = {

@@ -5,6 +5,7 @@ import type {
   ClaimRequest,
   CheckSummary,
   OCRResponse,
+  ExchangeRateResponse,
 } from "@/types";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -73,6 +74,16 @@ export async function processReceipt(file: File): Promise<OCRResponse> {
     body: formData,
   });
   return handleResponse<OCRResponse>(response);
+}
+
+export async function getExchangeRate(
+  fromCurrency: string,
+  toCurrency: string
+): Promise<ExchangeRateResponse> {
+  const response = await fetch(
+    `${API_URL}/api/checks/exchange-rate?from_currency=${fromCurrency}&to_currency=${toCurrency}`
+  );
+  return handleResponse<ExchangeRateResponse>(response);
 }
 
 export { ApiError };

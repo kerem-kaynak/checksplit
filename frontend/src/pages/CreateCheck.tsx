@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CurrencyCombobox } from "@/components/CurrencyCombobox";
 import { createCheck } from "@/services/api";
-import { CURRENCY_SYMBOLS, type Currency, type ItemCreate, type PaymentMethods } from "@/types";
+import { getCurrencySymbol, type Currency, type ItemCreate, type PaymentMethods } from "@/types";
 
 interface LocationState {
   items?: ItemCreate[];
@@ -385,18 +386,10 @@ export function CreateCheck() {
 
         <div className="mb-6">
           <Label className="mb-2 block">Currency</Label>
-          <div className="flex gap-2">
-            {(["EUR", "USD", "TRY"] as Currency[]).map((c) => (
-              <Button
-                key={c}
-                variant={currency === c ? "default" : "outline"}
-                size="sm"
-                onClick={() => setCurrency(c)}
-              >
-                {CURRENCY_SYMBOLS[c]} {c}
-              </Button>
-            ))}
-          </div>
+          <CurrencyCombobox
+            value={currency}
+            onChange={(c) => setCurrency(c)}
+          />
         </div>
 
         <div className="space-y-4 mb-6">
@@ -449,7 +442,7 @@ export function CreateCheck() {
                     <div className="flex-1">
                       <div className="relative">
                         <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                          {CURRENCY_SYMBOLS[currency]}
+                          {getCurrencySymbol(currency)}
                         </span>
                         <Input
                           type="number"
@@ -472,14 +465,14 @@ export function CreateCheck() {
 
                     <div className="w-24 text-right">
                       <p className="font-medium">
-                        {CURRENCY_SYMBOLS[currency]}{prices.total_price}
+                        {getCurrencySymbol(currency)}{prices.total_price}
                       </p>
                     </div>
                   </div>
 
                   {item.quantity > 1 && (
                     <p className="text-xs text-muted-foreground">
-                      {item.quantity} × {CURRENCY_SYMBOLS[currency]}{prices.unit_price} each
+                      {item.quantity} × {getCurrencySymbol(currency)}{prices.unit_price} each
                     </p>
                   )}
                 </CardContent>
@@ -499,7 +492,7 @@ export function CreateCheck() {
           </Label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-              {CURRENCY_SYMBOLS[currency]}
+              {getCurrencySymbol(currency)}
             </span>
             <Input
               id="tip"
@@ -521,21 +514,21 @@ export function CreateCheck() {
             <div className="flex justify-between items-center mb-2 text-sm gap-4">
               <span>Subtotal ({items.length} items)</span>
               <span>
-                {CURRENCY_SYMBOLS[currency]}{total.toFixed(2)}
+                {getCurrencySymbol(currency)}{total.toFixed(2)}
               </span>
             </div>
             {tip > 0 && (
               <div className="flex justify-between items-center mb-2 text-sm gap-4">
                 <span>Tip</span>
                 <span>
-                  {CURRENCY_SYMBOLS[currency]}{tip.toFixed(2)}
+                  {getCurrencySymbol(currency)}{tip.toFixed(2)}
                 </span>
               </div>
             )}
             <div className="flex justify-between items-center font-bold mb-4 gap-4">
               <span>Total</span>
               <span>
-                {CURRENCY_SYMBOLS[currency]}{grandTotal.toFixed(2)}
+                {getCurrencySymbol(currency)}{grandTotal.toFixed(2)}
               </span>
             </div>
             <Button

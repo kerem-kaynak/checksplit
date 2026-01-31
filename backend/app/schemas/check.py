@@ -59,7 +59,7 @@ class ItemResponse(BaseModel):
 
 
 class CheckBase(BaseModel):
-    currency: str = Field(default="EUR", pattern="^(EUR|USD|TRY)$")
+    currency: str = Field(default="EUR", pattern="^[A-Z]{3}$")
     tip_amount: Decimal = Field(default=Decimal("0.00"), ge=0, decimal_places=2)
 
 
@@ -70,7 +70,7 @@ class CheckCreate(CheckBase):
 
 
 class CheckUpdate(BaseModel):
-    currency: str | None = Field(None, pattern="^(EUR|USD|TRY)$")
+    currency: str | None = Field(None, pattern="^[A-Z]{3}$")
     tip_amount: Decimal | None = Field(None, ge=0, decimal_places=2)
     items: list[ItemCreate] | None = None
 
@@ -113,3 +113,4 @@ class OCRItem(BaseModel):
 
 class OCRResponse(BaseModel):
     items: list[OCRItem]
+    currency: str | None = Field(default=None, pattern="^[A-Z]{3}$")

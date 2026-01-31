@@ -1,10 +1,52 @@
-export type Currency = "EUR" | "USD" | "TRY";
+export type Currency = string;
 
-export const CURRENCY_SYMBOLS: Record<Currency, string> = {
+export const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€",
   USD: "$",
   TRY: "₺",
+  GBP: "£",
+  JPY: "¥",
+  CNY: "¥",
+  CHF: "CHF",
+  CAD: "C$",
+  AUD: "A$",
+  INR: "₹",
+  KRW: "₩",
+  BRL: "R$",
+  MXN: "$",
+  SEK: "kr",
+  NOK: "kr",
+  DKK: "kr",
+  PLN: "zł",
+  CZK: "Kč",
+  HUF: "Ft",
+  RUB: "₽",
+  THB: "฿",
+  SGD: "S$",
+  HKD: "HK$",
+  NZD: "NZ$",
+  ZAR: "R",
+  ILS: "₪",
+  AED: "د.إ",
+  SAR: "﷼",
+  PHP: "₱",
+  MYR: "RM",
+  IDR: "Rp",
+  VND: "₫",
+  EGP: "E£",
+  NGN: "₦",
+  PKR: "₨",
+  BDT: "৳",
+  UAH: "₴",
+  RON: "lei",
+  BGN: "лв",
+  HRK: "kn",
+  ISK: "kr",
 };
+
+export function getCurrencySymbol(currency: string): string {
+  return CURRENCY_SYMBOLS[currency] || currency;
+}
 
 export interface BankAccount {
   account_holder: string;
@@ -93,4 +135,11 @@ export interface OCRItem {
 
 export interface OCRResponse {
   items: OCRItem[];
+  currency: string | null;
+}
+
+export interface ExchangeRateResponse {
+  from: string;
+  to: string;
+  rate: string;
 }
