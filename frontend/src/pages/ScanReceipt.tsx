@@ -80,6 +80,7 @@ export function ScanReceipt() {
     setError(null);
 
     const allItems: ItemCreate[] = [];
+    let detectedCurrency: string | null = null;
 
     try {
       for (let i = 0; i < images.length; i++) {
@@ -90,12 +91,16 @@ export function ScanReceipt() {
           quantity: item.quantity,
           unit_price: item.unit_price,
         })));
+        // Use the first detected currency
+        if (!detectedCurrency && result.currency) {
+          detectedCurrency = result.currency;
+        }
       }
 
       images.forEach((img) => URL.revokeObjectURL(img.preview));
 
       navigate("/create", {
-        state: { items: allItems },
+        state: { items: allItems, currency: detectedCurrency },
         replace: true
       });
     } catch (err) {

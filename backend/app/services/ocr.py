@@ -33,6 +33,10 @@ class ReceiptData(BaseModel):
     items: list[ReceiptItem] = Field(
         description="All food/drink/product items from the receipt. Exclude totals, subtotals, tax, tips, and service charges."
     )
+    currency: str | None = Field(
+        default=None,
+        description="ISO 4217 currency code (e.g., EUR, USD, GBP) ONLY if clearly visible on receipt. Return null if uncertain."
+    )
 
 
 RECEIPT_EXTRACTION_PROMPT = """You are a receipt parser. Extract all purchasable items from this receipt image.
@@ -62,7 +66,13 @@ HANDLING UNCLEAR TEXT:
 - If price is unclear, estimate based on similar items on the receipt
 - If completely unreadable, skip that item
 
-Extract the items now."""
+CURRENCY DETECTION:
+- Look for currency symbols (€, $, £, ₺, ¥, etc.) next to prices
+- Look for explicit currency text (EUR, USD, GBP, TRY, JPY, etc.)
+- ONLY return a currency if you are confident - if unclear, return null
+- Common symbols: € = EUR, $ = USD, £ = GBP, ₺ = TRY, ¥ = JPY or CNY (use context to determine)
+
+Extract the items and currency now."""
 
 
 def parse_receipt_image(image_data: bytes, mime_type: str) -> OCRResponse:
@@ -123,4 +133,4 @@ def parse_receipt_image(image_data: bytes, mime_type: str) -> OCRResponse:
             )
         )
 
-    return OCRResponse(items=items)
+    return OCRResponse(items=items, currency=receipt_data.currency)
