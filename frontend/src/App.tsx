@@ -9,10 +9,11 @@ import { EditCheck } from "@/pages/EditCheck";
 import { PaymentPage } from "@/pages/PaymentPage";
 import { HowItWorks } from "@/pages/HowItWorks";
 import { Toaster } from "@/components/ui/sonner";
+import { WynneGate } from "@/components/WynneGate";
 
 function App() {
   return (
-    <>
+    <WynneGate>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/how-it-works" element={<HowItWorks />} />
@@ -25,7 +26,7 @@ function App() {
         <Route path="/check/:code" element={<ViewCheck />} />
       </Routes>
       <Toaster />
-    </>
+    </WynneGate>
   );
 }
 

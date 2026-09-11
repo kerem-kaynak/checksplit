@@ -17,6 +17,7 @@ import { getParticipantName, storeParticipantName } from "@/lib/participant";
 import { BottomBar } from "@/components/BottomBar";
 import { PaymentActions } from "@/components/PaymentActions";
 import { PaymentStatus } from "@/components/PaymentStatus";
+import { banWynne, isWynne } from "@/lib/wynneBan";
 
 function isSubItemClaimedByMe(item: Item, subIndex: number, myName: string): boolean {
   const claimants = item.claims[String(subIndex)] || [];
@@ -79,6 +80,10 @@ export function ViewCheck() {
   const handleSetName = () => {
     if (!nameInput.trim() || !code) return;
     const name = nameInput.trim();
+    if (isWynne(name)) {
+      banWynne();
+      return;
+    }
     try {
       storeParticipantName(code, name);
     } catch {

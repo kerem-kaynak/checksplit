@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { CurrencyCombobox } from "@/components/CurrencyCombobox";
 import { createCheck } from "@/services/api";
 import { getCurrencySymbol, type Currency, type ItemCreate, type PaymentMethods } from "@/types";
+import { banWynne, isWynne } from "@/lib/wynneBan";
 
 interface LocationState {
   items?: ItemCreate[];
@@ -121,6 +122,10 @@ export function CreateCheck() {
   };
 
   const handleSubmit = async () => {
+    if (bankEnabled && isWynne(accountHolder)) {
+      banWynne();
+      return;
+    }
     const validItems = items.filter((item) => item.name.trim() && (item.unit_price || item.total_price));
     if (validItems.length === 0) {
       setError("Add at least one item with a name and price");
@@ -292,6 +297,9 @@ export function CreateCheck() {
                         placeholder="John Doe"
                         value={accountHolder}
                         onChange={(e) => setAccountHolder(e.target.value)}
+                        onBlur={() => {
+                          if (isWynne(accountHolder)) banWynne();
+                        }}
                         maxLength={70}
                       />
                     </div>
