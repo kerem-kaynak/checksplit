@@ -19,7 +19,7 @@ from app.schemas.check import (
     PaymentUpdate,
 )
 from app.services.ocr import parse_receipt_image
-from app.services.exchange import get_exchange_rate
+from app.services.exchange import ExchangeRateError, get_exchange_rate
 
 router = APIRouter(prefix="/api/checks", tags=["checks"])
 
@@ -58,7 +58,10 @@ def check_to_response(check: Check) -> CheckResponse:
 @router.get("/exchange-rate")
 async def get_rate(from_currency: str, to_currency: str) -> dict:
     """Get exchange rate between two currencies using Frankfurter API."""
-    rate = await get_exchange_rate(from_currency.upper(), to_currency.upper())
+    try:
+        rate = await get_exchange_rate(from_currency.upper(), to_currency.upper())
+    except ExchangeRateError as e:
+        raise HTTPException(status_code=503, detail="Could not fetch exchange rate.") from e
     return {
         "from": from_currency.upper(),
         "to": to_currency.upper(),

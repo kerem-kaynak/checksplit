@@ -51,7 +51,8 @@ export function PaymentPage() {
 
   // Payment currency state
   const [paymentCurrency, setPaymentCurrency] = useState("EUR");
-  const [rateQuote, setRateQuote] = useState<{ from: string; to: string; rate: string | null; error: string | null } | null>(null);
+  const [rateQuote, setRateQuote] = useState<{ from: string; to: string; rate: string } | null>(null);
+  const [rateError, setRateError] = useState<string | null>(null);
 
   // Derived values
   const checkCurrency = check?.currency || "";
@@ -68,8 +69,13 @@ export function PaymentPage() {
   const exchangeRate = needsConversion ? (quoteMatches ? rateQuote.rate : null) : "1";
   const convertedAmount = exchangeRate ? (paymentAmount * Number(exchangeRate)).toFixed(2) : "";
   const isLoadingRate = needsConversion && !quoteMatches;
-  const rateError = quoteMatches ? rateQuote.error : null;
   const bankAccount = check?.payment_methods?.bank;
+
+  const handlePaymentCurrencyChange = (currency: string) => {
+    setRateError(null);
+    if (currency !== paymentCurrency) setRateQuote(null);
+    setPaymentCurrency(currency);
+  };
 
   // Fetch exchange rate when payment currency changes
   useEffect(() => {
@@ -79,9 +85,19 @@ export function PaymentPage() {
     async function fetchRate() {
       try {
         const response = await getExchangeRate(checkCurrency, paymentCurrency);
-        if (active) setRateQuote({ from: checkCurrency, to: paymentCurrency, rate: response.rate, error: null });
+        if (!Number.isFinite(Number(response.rate)) || Number(response.rate) <= 0) {
+          throw new Error("Invalid exchange rate");
+        }
+        if (active) {
+          setRateQuote({ from: checkCurrency, to: paymentCurrency, rate: response.rate });
+          setRateError(null);
+        }
       } catch {
-        if (active) setRateQuote({ from: checkCurrency, to: paymentCurrency, rate: null, error: "Could not fetch exchange rate. Choose the check currency to continue." });
+        if (active) {
+          setRateQuote(null);
+          setRateError(`Could not fetch the exchange rate. Switched back to ${checkCurrency}, the check currency.`);
+          setPaymentCurrency(checkCurrency);
+        }
       }
     }
 
@@ -222,7 +238,7 @@ export function PaymentPage() {
           <Label className="mb-2 block">Pay in</Label>
           <CurrencyCombobox
             value={paymentCurrency}
-            onChange={setPaymentCurrency}
+            onChange={handlePaymentCurrencyChange}
             className="h-auto min-h-12 whitespace-normal text-left"
           />
           {isLoadingRate && (
@@ -238,7 +254,7 @@ export function PaymentPage() {
             </p>
           )}
           {rateError && (
-            <p className="text-sm text-destructive mt-2">{rateError}</p>
+            <p role="alert" className="text-sm text-destructive mt-2">{rateError}</p>
           )}
         </div>
 
@@ -322,7 +338,7 @@ export function PaymentPage() {
                   {paymentCurrency !== "EUR" && <Button
                     variant="outline"
                     className="min-h-12"
-                    onClick={() => setPaymentCurrency("EUR")}
+                    onClick={() => handlePaymentCurrencyChange("EUR")}
                   >
                     Switch to EUR
                   </Button>}

@@ -11,6 +11,10 @@ _rate_cache: dict[str, tuple[datetime, Decimal]] = {}
 CACHE_TTL_SECONDS = 300
 
 
+class ExchangeRateError(Exception):
+    """An exchange rate could not be retrieved or was invalid."""
+
+
 async def get_exchange_rate(from_currency: str, to_currency: str) -> Decimal:
     """
     Get exchange rate from Frankfurter API.
@@ -21,7 +25,10 @@ async def get_exchange_rate(from_currency: str, to_currency: str) -> Decimal:
         to_currency: Target currency ISO code (e.g., "EUR")
 
     Returns:
-        Exchange rate as Decimal. Returns 1.0 on error or same currency.
+        Exchange rate as Decimal. Returns 1.0 only for the same currency.
+
+    Raises:
+        ExchangeRateError: If the rate is unavailable or invalid.
     """
     from_currency = from_currency.upper()
     to_currency = to_currency.upper()
@@ -40,10 +47,10 @@ async def get_exchange_rate(from_currency: str, to_currency: str) -> Decimal:
 
     # Fetch from Frankfurter API
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
             response = await client.get(
-                "https://api.frankfurter.app/latest",
-                params={"from": from_currency, "to": to_currency},
+                "https://api.frankfurter.dev/v1/latest",
+                params={"base": from_currency, "symbols": to_currency},
             )
             response.raise_for_status()
             data = response.json()
@@ -51,24 +58,17 @@ async def get_exchange_rate(from_currency: str, to_currency: str) -> Decimal:
             rate_value = rates.get(to_currency)
 
             if rate_value is None:
-                logger.warning(
-                    f"No rate found for {from_currency} -> {to_currency}"
-                )
-                return Decimal("1.0")
+                raise ValueError(f"No rate found for {from_currency} -> {to_currency}")
 
             rate = Decimal(str(rate_value))
+            if not rate.is_finite() or rate <= 0:
+                raise ValueError(f"Invalid exchange rate: {rate_value}")
             _rate_cache[cache_key] = (now, rate)
             return rate
 
-    except httpx.HTTPStatusError as e:
-        logger.error(f"Frankfurter API HTTP error: {e.response.status_code}")
-        return Decimal("1.0")
-    except httpx.RequestError as e:
-        logger.error(f"Frankfurter API request error: {e}")
-        return Decimal("1.0")
     except Exception as e:
-        logger.error(f"Exchange rate error: {e}")
-        return Decimal("1.0")
+        logger.error("Exchange rate error for %s -> %s: %s", from_currency, to_currency, e)
+        raise ExchangeRateError("Could not fetch exchange rate.") from e
 
 
 def clear_rate_cache() -> None:
