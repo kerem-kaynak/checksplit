@@ -1,13 +1,17 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { Navigate, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Download, ExternalLink, Loader2, Copy, Check, AlertTriangle } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { CurrencyCombobox } from "@/components/CurrencyCombobox";
-import { getCheck, getCheckSummary, getExchangeRate } from "@/services/api";
-import { getCurrencySymbol, type Check as CheckType, type CheckSummary } from "@/types";
+import { getExchangeRate } from "@/services/api";
+import { getCurrencySymbol } from "@/types";
+import { useCheckSummary } from "@/hooks/useCheckSummary";
+import { getParticipantName } from "@/lib/participant";
+import { BottomBar } from "@/components/BottomBar";
+import { PaymentActions } from "@/components/PaymentActions";
 
 function generateEpcQrCode(
   accountHolder: string,
@@ -37,97 +41,62 @@ function generateEpcQrCode(
 export function PaymentPage() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const amount = searchParams.get("amount") || "0";
-  const participantName = searchParams.get("name") || "";
-
-  const [check, setCheck] = useState<CheckType | null>(null);
-  const [summary, setSummary] = useState<CheckSummary | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const participantName = code ? getParticipantName(code) : null;
+  const { summary, error, isLoading, isUpdating, refresh, mutate } = useCheckSummary(code);
+  const check = summary?.check;
+  const myParticipant = summary?.participants.find((p) => p.name === participantName);
   const [copied, setCopied] = useState(false);
   const [qrImageUrl, setQrImageUrl] = useState<string | null>(null);
-  const qrRef = useRef<HTMLDivElement>(null);
   const qrCanvasRef = useRef<HTMLDivElement>(null);
 
   // Payment currency state
   const [paymentCurrency, setPaymentCurrency] = useState("EUR");
-  const [exchangeRate, setExchangeRate] = useState("1");
-  const [isLoadingRate, setIsLoadingRate] = useState(false);
-  const [rateError, setRateError] = useState<string | null>(null);
+  const [rateQuote, setRateQuote] = useState<{ from: string; to: string; rate: string | null; error: string | null } | null>(null);
 
   // Derived values
-  const checkCurrency = check?.currency || "EUR";
-  const originalAmount = parseFloat(amount);
-  const convertedAmount = (originalAmount * parseFloat(exchangeRate)).toFixed(2);
-  const needsConversion = checkCurrency !== paymentCurrency;
+  const checkCurrency = check?.currency || "";
+  const originalAmount = Number(myParticipant?.total || 0);
+  const isPaid = myParticipant?.payment_status === "paid";
+  const needsReview = myParticipant?.payment_status === "needs_review";
+  const currencyChanged = needsReview && myParticipant.paid_currency !== checkCurrency;
+  const paymentAmount = needsReview && !currencyChanged
+    ? Math.max(0, originalAmount - Number(myParticipant.paid_amount))
+    : originalAmount;
+  const showPaymentMethods = Boolean(myParticipant && !currencyChanged && paymentAmount > 0);
+  const needsConversion = Boolean(checkCurrency && checkCurrency !== paymentCurrency);
+  const quoteMatches = rateQuote?.from === checkCurrency && rateQuote.to === paymentCurrency;
+  const exchangeRate = needsConversion ? (quoteMatches ? rateQuote.rate : null) : "1";
+  const convertedAmount = exchangeRate ? (paymentAmount * Number(exchangeRate)).toFixed(2) : "";
+  const isLoadingRate = needsConversion && !quoteMatches;
+  const rateError = quoteMatches ? rateQuote.error : null;
+  const bankAccount = check?.payment_methods?.bank;
 
   // Fetch exchange rate when payment currency changes
   useEffect(() => {
-    if (!check) return;
-
-    if (checkCurrency === paymentCurrency) {
-      setExchangeRate("1");
-      setRateError(null);
-      return;
-    }
+    if (!checkCurrency || checkCurrency === paymentCurrency || !showPaymentMethods) return;
+    let active = true;
 
     async function fetchRate() {
-      setIsLoadingRate(true);
-      setRateError(null);
       try {
         const response = await getExchangeRate(checkCurrency, paymentCurrency);
-        setExchangeRate(response.rate);
+        if (active) setRateQuote({ from: checkCurrency, to: paymentCurrency, rate: response.rate, error: null });
       } catch {
-        setRateError("Could not fetch exchange rate");
-        setExchangeRate("1");
-      } finally {
-        setIsLoadingRate(false);
+        if (active) setRateQuote({ from: checkCurrency, to: paymentCurrency, rate: null, error: "Could not fetch exchange rate. Choose the check currency to continue." });
       }
     }
 
     fetchRate();
-  }, [check, checkCurrency, paymentCurrency]);
+    return () => { active = false; };
+  }, [checkCurrency, paymentCurrency, showPaymentMethods]);
 
   // Regenerate QR when payment currency or amount changes
   useEffect(() => {
-    if (!check?.payment_methods?.bank || paymentCurrency !== "EUR") {
-      setQrImageUrl(null);
-      return;
-    }
-
-    // Small delay to ensure canvas is rendered
-    const timer = setTimeout(() => {
-      if (!qrCanvasRef.current) return;
-      const canvas = qrCanvasRef.current.querySelector("canvas");
-      if (canvas) {
-        setQrImageUrl(canvas.toDataURL("image/png"));
-      }
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, [check, paymentCurrency, convertedAmount]);
-
-  useEffect(() => {
-    if (!code) return;
-
-    async function loadData() {
-      try {
-        const [checkData, summaryData] = await Promise.all([
-          getCheck(code!),
-          getCheckSummary(code!),
-        ]);
-        setCheck(checkData);
-        setSummary(summaryData);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load check");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadData();
-  }, [code]);
+    const frame = requestAnimationFrame(() => {
+      const canvas = qrCanvasRef.current?.querySelector("canvas");
+      setQrImageUrl(canvas?.toDataURL("image/png") || null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [bankAccount?.account_holder, bankAccount?.iban, check?.title, paymentCurrency, convertedAmount, showPaymentMethods]);
 
   const handleDownloadQr = async () => {
     if (!qrCanvasRef.current) return;
@@ -192,7 +161,7 @@ export function PaymentPage() {
     );
   }
 
-  if (error || !check) {
+  if (!check) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <p className="text-destructive mb-4">{error || "Check not found"}</p>
@@ -203,44 +172,58 @@ export function PaymentPage() {
     );
   }
 
+  if (!participantName) return <Navigate to={`/check/${code}`} replace />;
+
   const paymentMethods = check.payment_methods;
   const checkSymbol = getCurrencySymbol(checkCurrency);
   const paymentSymbol = getCurrencySymbol(paymentCurrency);
   const formattedOriginalAmount = originalAmount.toFixed(2);
 
   // Amount to use for EUR QR code (convert from check currency to EUR if needed)
-  const eurAmount = paymentCurrency === "EUR" ? convertedAmount : formattedOriginalAmount;
+  const eurAmount = convertedAmount;
 
   return (
-    <div className="min-h-screen p-4 pb-24">
+    <div className="min-h-screen p-4">
       <div className="max-w-md mx-auto">
         <Button
           variant="ghost"
           size="sm"
-          className="mb-4"
+          className="mb-4 min-h-12"
           onClick={() => navigate(`/check/${code}`)}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Check
         </Button>
 
-        <h1 className="text-2xl font-bold mb-2">Pay {participantName ? "Your Share" : "Now"}</h1>
-        <p className="text-muted-foreground mb-4">
-          {participantName && <span className="font-medium">{participantName}, </span>}
-          You owe <span className="font-bold text-foreground">{checkSymbol}{formattedOriginalAmount}</span>
-          {needsConversion && !isLoadingRate && (
-            <span className="text-foreground">
-              {" "}({paymentSymbol}{convertedAmount})
-            </span>
-          )}
-        </p>
+        <h1 className="text-2xl font-bold mb-2">Your payment</h1>
+        <p className="text-muted-foreground break-words">{participantName}, your share including tip</p>
+        <p className="text-4xl font-bold tabular-nums break-all mt-3 mb-6">{checkSymbol}{formattedOriginalAmount}</p>
 
+        {error && (
+          <div role="alert" className="mb-4 space-y-2">
+            <p className="text-sm text-destructive">Could not refresh this check. Check your connection and try again.</p>
+            <Button variant="outline" className="min-h-12" onClick={() => void refresh()}>Refresh</Button>
+          </div>
+        )}
+
+        {!myParticipant && <p className="my-6 text-muted-foreground">Go back to the check and claim your items before marking your share as paid.</p>}
+
+        {needsReview && (
+          <div className="my-6 space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+            <p className="font-medium">Review your updated share</p>
+            <p>Previously marked {getCurrencySymbol(myParticipant.paid_currency!)}{myParticipant.paid_amount} as paid.</p>
+            <p>{currencyChanged ? "The check currency changed. Agree the amount with the recipient before making another payment." : paymentAmount > 0 ? `Remaining to settle: ${checkSymbol}${paymentAmount.toFixed(2)}. The payment options below use this difference.` : "Your share decreased. Review the difference with the recipient before confirming."}</p>
+          </div>
+        )}
+
+        {showPaymentMethods && <>
         {/* Payment Currency Selector */}
         <div className="mb-6">
           <Label className="mb-2 block">Pay in</Label>
           <CurrencyCombobox
             value={paymentCurrency}
             onChange={setPaymentCurrency}
+            className="h-auto min-h-12 whitespace-normal text-left"
           />
           {isLoadingRate && (
             <p className="text-sm text-muted-foreground mt-2 flex items-center gap-2">
@@ -248,9 +231,9 @@ export function PaymentPage() {
               Loading exchange rate...
             </p>
           )}
-          {!isLoadingRate && needsConversion && !rateError && (
+          {!isLoadingRate && needsConversion && !rateError && exchangeRate && (
             <p className="text-sm text-muted-foreground mt-2">
-              {checkSymbol}{formattedOriginalAmount} = {paymentSymbol}{convertedAmount}
+              {checkSymbol}{paymentAmount.toFixed(2)} = {paymentSymbol}{convertedAmount}
               <span className="text-xs ml-1">(rate: {exchangeRate})</span>
             </p>
           )}
@@ -287,7 +270,7 @@ export function PaymentPage() {
                 <CardTitle className="text-lg">Bank Transfer</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-  {paymentCurrency === "EUR" ? (
+  {paymentCurrency === "EUR" && convertedAmount ? (
                 <>
                 {/* Hidden canvas for generating QR */}
                 <div ref={qrCanvasRef} className="hidden">
@@ -306,12 +289,12 @@ export function PaymentPage() {
                   If the download button doesn't work, you can long-press the QR code to save it.
                 </p>
                 {/* Displayed image - can be long-pressed to save on mobile */}
-                <div ref={qrRef} className="flex justify-center bg-white p-4 rounded-lg">
+                <div className="flex justify-center bg-white p-4 rounded-lg">
                   {qrImageUrl ? (
                     <img
                       src={qrImageUrl}
                       alt="Payment QR Code"
-                      className="w-[200px] h-[200px]"
+                      className="w-[200px] max-w-full aspect-square"
                     />
                   ) : (
                     <div className="w-[200px] h-[200px] flex items-center justify-center">
@@ -324,7 +307,7 @@ export function PaymentPage() {
                 </p>
                 <Button
                   variant="outline"
-                  className="w-full"
+                  className="w-full min-h-12"
                   onClick={handleDownloadQr}
                 >
                   <Download className="h-4 w-4 mr-2" />
@@ -334,33 +317,35 @@ export function PaymentPage() {
                 ) : (
                 <div className="text-center space-y-3">
                   <p className="text-sm text-muted-foreground">
-                    QR code is only available for EUR payments.
+                    {paymentCurrency === "EUR" ? "A current exchange rate is needed to generate the payment QR code." : "QR code is only available for EUR payments."}
                   </p>
-                  <Button
+                  {paymentCurrency !== "EUR" && <Button
                     variant="outline"
+                    className="min-h-12"
                     onClick={() => setPaymentCurrency("EUR")}
                   >
                     Switch to EUR
-                  </Button>
+                  </Button>}
                 </div>
                 )}
 
                 <div className="border-t pt-4 space-y-2">
                   <p className="text-sm text-muted-foreground">Or transfer manually:</p>
                   <div className="space-y-1">
-                    <p className="text-sm">
+                    <p className="text-sm break-words">
                       <span className="text-muted-foreground">To:</span>{" "}
                       <span className="font-medium">{paymentMethods.bank.account_holder}</span>
                     </p>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm flex-1">
+                      <p className="text-sm flex-1 min-w-0 break-all">
                         <span className="text-muted-foreground">IBAN:</span>{" "}
                         <span className="font-mono text-xs">{paymentMethods.bank.iban}</span>
                       </p>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8"
+                        className="h-12 w-12 shrink-0"
+                        aria-label="Copy IBAN"
                         onClick={() => handleCopyIban(paymentMethods.bank!.iban)}
                       >
                         {copied ? (
@@ -372,7 +357,7 @@ export function PaymentPage() {
                     </div>
                     <p className="text-sm">
                       <span className="text-muted-foreground">Amount:</span>{" "}
-                      <span className="font-medium">{paymentSymbol}{convertedAmount}</span>
+                      <span className="font-medium">{convertedAmount ? `${paymentSymbol}${convertedAmount}` : "Waiting for exchange rate"}</span>
                     </p>
                   </div>
                 </div>
@@ -391,16 +376,17 @@ export function PaymentPage() {
                   On a computer, the amount will be pre-filled. On mobile, you may need to enter the amount ({paymentSymbol}{convertedAmount}) manually.
                 </p>
                 <Button
-                  className="w-full"
+                  className="w-full min-h-12 h-auto whitespace-normal"
+                  disabled={!convertedAmount || Boolean(error)}
                   onClick={() => {
                     // PayPal.me format: https://paypal.me/username/amountCURRENCY
                     const baseUrl = paymentMethods.paypal!.url.replace(/\/$/, "");
-                    const paypalUrl = `${baseUrl}/${convertedAmount}${paymentCurrency}`;
+                    const paypalUrl = isPaid ? baseUrl : `${baseUrl}/${convertedAmount}${paymentCurrency}`;
                     window.open(paypalUrl, "_blank");
                   }}
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
-                  Pay {paymentSymbol}{convertedAmount} via PayPal
+                  {isPaid ? "Open PayPal" : convertedAmount ? `Pay ${paymentSymbol}${convertedAmount} via PayPal` : "Waiting for exchange rate"}
                 </Button>
               </CardContent>
             </Card>
@@ -413,12 +399,12 @@ export function PaymentPage() {
                 <CardTitle className="text-lg">Other Payment Options</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm whitespace-pre-wrap">{paymentMethods.other.text}</p>
+                <p className="text-sm whitespace-pre-wrap break-words">{paymentMethods.other.text}</p>
                 <p className="text-sm mt-2">
-                  <span className="text-muted-foreground">Amount to pay:</span>{" "}
+                  <span className="text-muted-foreground">Your share:</span>{" "}
                   <span className="font-medium">
-                    {checkSymbol}{formattedOriginalAmount}
-                    {needsConversion && (
+                    {checkSymbol}{paymentAmount.toFixed(2)}
+                    {needsConversion && convertedAmount && (
                       <span className="text-muted-foreground">
                         {" "}({paymentSymbol}{convertedAmount})
                       </span>
@@ -429,7 +415,13 @@ export function PaymentPage() {
             </Card>
           )}
         </div>
+        </>}
       </div>
+      {myParticipant && code && (
+        <BottomBar>
+          <PaymentActions code={code} currency={checkCurrency} participant={myParticipant} disabled={isUpdating || Boolean(error)} mutate={mutate} />
+        </BottomBar>
+      )}
     </div>
   );
 }

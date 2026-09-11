@@ -1,11 +1,11 @@
 from decimal import Decimal
-from uuid import UUID
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.check import Check, Item
+from app.models.check import Check, Item, Payment
 from app.schemas.check import (
     CheckCreate,
     CheckUpdate,
@@ -16,6 +16,7 @@ from app.schemas.check import (
     OCRResponse,
     ItemResponse,
     PaymentMethods,
+    PaymentUpdate,
 )
 from app.services.ocr import parse_receipt_image
 from app.services.exchange import get_exchange_rate
@@ -111,7 +112,7 @@ def update_check(
     code: str, check_data: CheckUpdate, db: Session = Depends(get_db)
 ) -> CheckResponse:
     """Update a check's currency, tip, or items."""
-    check = db.query(Check).filter(Check.code == code.upper()).first()
+    check = db.query(Check).filter(Check.code == code.upper()).with_for_update().first()
     if not check:
         raise HTTPException(status_code=404, detail="Check not found")
 
@@ -147,7 +148,7 @@ def claim_item(
     code: str, claim_data: ClaimRequest, db: Session = Depends(get_db)
 ) -> CheckResponse:
     """Toggle claim for a specific sub-item."""
-    check = db.query(Check).filter(Check.code == code.upper()).first()
+    check = db.query(Check).filter(Check.code == code.upper()).with_for_update().first()
     if not check:
         raise HTTPException(status_code=404, detail="Check not found")
 
@@ -189,13 +190,8 @@ def claim_item(
     return check_to_response(check)
 
 
-@router.get("/{code}/summary", response_model=CheckSummary)
-def get_check_summary(code: str, db: Session = Depends(get_db)) -> CheckSummary:
-    """Get a summary of the check with calculated amounts per participant."""
-    check = db.query(Check).filter(Check.code == code.upper()).first()
-    if not check:
-        raise HTTPException(status_code=404, detail="Check not found")
-
+def build_check_summary(check: Check) -> CheckSummary:
+    """Calculate current shares and compare them to recorded payments."""
     participant_subtotals: dict[str, Decimal] = {}
     unclaimed_total = Decimal("0.00")
 
@@ -217,6 +213,11 @@ def get_check_summary(code: str, db: Session = Depends(get_db)) -> CheckSummary:
 
     total_items = sum((item.unit_price * item.quantity for item in check.items), Decimal("0.00"))
 
+    payments = {payment.participant_name: payment for payment in check.payments}
+    # Retain a payment even if an edit or unclaim removes all of that person's items.
+    for name in payments:
+        participant_subtotals.setdefault(name, Decimal("0.00"))
+
     participants: list[ParticipantSummary] = []
     for name, subtotal in participant_subtotals.items():
         if total_items > 0:
@@ -224,12 +225,26 @@ def get_check_summary(code: str, db: Session = Depends(get_db)) -> CheckSummary:
         else:
             tip_share = Decimal("0.00")
 
+        total = (subtotal + tip_share).quantize(Decimal("0.01"))
+        payment = payments.get(name)
+        payment_status = "unpaid"
+        if payment:
+            payment_status = (
+                "paid"
+                if payment.amount == total and payment.currency == check.currency
+                else "needs_review"
+            )
+
         participants.append(
             ParticipantSummary(
                 name=name,
                 items_subtotal=subtotal.quantize(Decimal("0.01")),
                 tip_share=tip_share.quantize(Decimal("0.01")),
-                total=(subtotal + tip_share).quantize(Decimal("0.01")),
+                total=total,
+                payment_status=payment_status,
+                paid_amount=payment.amount if payment else None,
+                paid_currency=payment.currency if payment else None,
+                paid_at=payment.paid_at if payment else None,
             )
         )
 
@@ -240,6 +255,53 @@ def get_check_summary(code: str, db: Session = Depends(get_db)) -> CheckSummary:
         participants=participants,
         unclaimed_total=unclaimed_total.quantize(Decimal("0.01")),
     )
+
+
+@router.get("/{code}/summary", response_model=CheckSummary)
+def get_check_summary(code: str, db: Session = Depends(get_db)) -> CheckSummary:
+    """Get current amounts and self-reported payment status for everyone."""
+    check = db.query(Check).filter(Check.code == code.upper()).first()
+    if not check:
+        raise HTTPException(status_code=404, detail="Check not found")
+    return build_check_summary(check)
+
+
+@router.put("/{code}/payment", response_model=CheckSummary)
+def update_payment(
+    code: str, payment_data: PaymentUpdate, db: Session = Depends(get_db)
+) -> CheckSummary:
+    # Claims, edits and payment updates share this lock so the recorded amount
+    # cannot race with a change to the split. Repeated requests set, not toggle.
+    check = db.query(Check).filter(Check.code == code.upper()).with_for_update().first()
+    if not check:
+        raise HTTPException(status_code=404, detail="Check not found")
+
+    name = payment_data.participant_name
+    payment = next((p for p in check.payments if p.participant_name == name), None)
+
+    if payment_data.paid:
+        participant = next((p for p in build_check_summary(check).participants if p.name == name), None)
+        if participant is None or participant.total <= 0:
+            raise HTTPException(status_code=400, detail="Claim items with a positive total before marking your share as paid.")
+        if (
+            participant.total != payment_data.expected_total
+            or check.currency != payment_data.expected_currency
+        ):
+            raise HTTPException(status_code=409, detail="Your share changed. Review the updated amount and try again.")
+
+        if payment is None:
+            payment = Payment(participant_name=name)
+            check.payments.append(payment)
+        if payment.amount != participant.total or payment.currency != check.currency:
+            payment.amount = participant.total
+            payment.currency = check.currency
+            payment.paid_at = datetime.now(timezone.utc)
+    elif payment is not None:
+        check.payments.remove(payment)
+
+    db.commit()
+    db.refresh(check)
+    return build_check_summary(check)
 
 
 ALLOWED_IMAGE_TYPES = {

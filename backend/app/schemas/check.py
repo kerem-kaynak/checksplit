@@ -1,8 +1,14 @@
 from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+
+
+ParticipantName = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
+]
 
 
 class BankAccount(BaseModel):
@@ -87,9 +93,16 @@ class CheckResponse(CheckBase):
 
 
 class ClaimRequest(BaseModel):
-    participant_name: str = Field(..., min_length=1, max_length=100)
+    participant_name: ParticipantName
     item_id: UUID
     sub_item_index: int = Field(..., ge=0)
+
+
+class PaymentUpdate(BaseModel):
+    participant_name: ParticipantName
+    paid: bool
+    expected_total: Decimal = Field(..., ge=0, decimal_places=2)
+    expected_currency: str = Field(..., pattern="^[A-Z]{3}$")
 
 
 class ParticipantSummary(BaseModel):
@@ -97,6 +110,10 @@ class ParticipantSummary(BaseModel):
     items_subtotal: Decimal
     tip_share: Decimal
     total: Decimal
+    payment_status: Literal["unpaid", "paid", "needs_review"] = "unpaid"
+    paid_amount: Decimal | None = None
+    paid_currency: str | None = None
+    paid_at: datetime | None = None
 
 
 class CheckSummary(BaseModel):

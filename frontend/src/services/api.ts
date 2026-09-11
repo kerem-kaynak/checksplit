@@ -6,9 +6,10 @@ import type {
   CheckSummary,
   OCRResponse,
   ExchangeRateResponse,
+  PaymentUpdate,
 } from "@/types";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "" : "http://localhost:8000");
 
 class ApiError extends Error {
   status: number;
@@ -62,6 +63,15 @@ export async function claimSubItem(code: string, data: ClaimRequest): Promise<Ch
 
 export async function getCheckSummary(code: string): Promise<CheckSummary> {
   const response = await fetch(`${API_URL}/api/checks/${code.toUpperCase()}/summary`);
+  return handleResponse<CheckSummary>(response);
+}
+
+export async function updatePayment(code: string, data: PaymentUpdate): Promise<CheckSummary> {
+  const response = await fetch(`${API_URL}/api/checks/${code.toUpperCase()}/payment`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
   return handleResponse<CheckSummary>(response);
 }
 

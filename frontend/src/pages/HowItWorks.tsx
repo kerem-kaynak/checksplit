@@ -76,6 +76,15 @@ const flows: Flow[] = [
           "You can unclaim items if you made a mistake",
         ],
       },
+      {
+        title: "6. Track payments",
+        description: "Open Summary to see who has marked their share as paid and how many people are still to pay.",
+        tips: [
+          "Each person marks their own share as paid after sending their payment",
+          "Paid means the person recorded their payment; the app doesn't verify bank transfers",
+          "Needs review means their amount or the check currency changed after they marked it as paid",
+        ],
+      },
     ],
   },
   {
@@ -93,7 +102,7 @@ const flows: Flow[] = [
       },
       {
         title: "2. Claim your items",
-        description: "Enter your name and tap on the items you ordered. If you shared something, each portion can be claimed separately.",
+        description: "Enter your name and tap on the items you ordered. If you shared an item, everyone who shared it should claim that same item or portion so its cost is split between you.",
         tips: [
           "Tap an item to expand it and see individual portions",
           "Each portion of an item can be claimed by a different person",
@@ -103,12 +112,24 @@ const flows: Flow[] = [
       },
       {
         title: "3. Pay your share",
-        description: "Once you've claimed your items, tap the Pay Now button to see payment options and your total amount owed.",
+        description: "Once you've claimed your items, tap Pay Now in the bottom panel to see payment options and your total amount owed.",
         tips: [
           "Scan the QR code with your banking app to pay instantly",
           "PayPal links pre-fill the amount on desktop, but on mobile you may need to enter it manually",
-          "Make sure everyone has claimed their items before paying - unclaimed items affect tip calculations",
+          "If you shared an item, wait for everyone who shared it to claim it too so your amount is correct",
+          "You don't need to wait for people who only ordered separate items",
           "You can download the QR code to pay later",
+        ],
+      },
+      {
+        title: "4. Mark your share as paid",
+        description: "After paying, tap Mark as paid in the bottom panel on either tab or on the payment page. Everyone can then see your Paid status in Summary.",
+        tips: [
+          "This records a payment you've already made; it doesn't transfer money",
+          "Tap Undo if you marked your share as paid by mistake",
+          "Your payment details stay available after you mark your share as paid",
+          "Your status is saved when you refresh or reopen the check",
+          "If your amount or the check currency changes, you'll see Needs review. Settle any difference before marking the updated share as paid",
         ],
       },
     ],

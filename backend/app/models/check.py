@@ -39,6 +39,9 @@ class Check(Base):
     items: Mapped[list["Item"]] = relationship(
         "Item", back_populates="check", cascade="all, delete-orphan", order_by="Item.position"
     )
+    payments: Mapped[list["Payment"]] = relationship(
+        "Payment", back_populates="check", cascade="all, delete-orphan"
+    )
 
 
 class Item(Base):
@@ -63,3 +66,19 @@ class Item(Base):
     @property
     def total_price(self) -> Decimal:
         return self.unit_price * self.quantity
+
+
+class Payment(Base):
+    """A participant's self-reported payment, in the check's original currency."""
+
+    __tablename__ = "payments"
+
+    check_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("checks.id", ondelete="CASCADE"), primary_key=True
+    )
+    participant_name: Mapped[str] = mapped_column(String(100), primary_key=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    currency: Mapped[str] = mapped_column(String(3))
+    paid_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    check: Mapped["Check"] = relationship("Check", back_populates="payments")

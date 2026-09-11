@@ -12,6 +12,7 @@ An app for splitting restaurant checks with friends. Scan a receipt or manually 
 - **Tip Splitting**: Tip is split proportionally based on each person's subtotal
 - **Share via Code**: 6-character alphanumeric codes for easy sharing
 - **Real-time Updates**: See who claimed what in real-time
+- **Payment Tracking**: Mark your own share as paid or unpaid from the bottom panel and see everyone's status in Summary. Payment details stay available after paying. Changed amounts or currencies show "Needs review" while preserving the original payment.
 
 ## Tech Stack
 
@@ -52,8 +53,7 @@ pip install -r requirements.txt
 export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/checksplit
 export GEMINI_API_KEY=your_api_key
 
-# Run migrations and start server
-alembic upgrade head
+# Start server (missing tables are created automatically on startup)
 uvicorn app.main:app --reload
 ```
 
@@ -64,6 +64,15 @@ cd frontend
 npm install
 npm run dev
 ```
+
+For phone testing on the same Wi-Fi, use `npm run dev -- --host 0.0.0.0`
+and open the printed Network URL. Leave `VITE_API_URL` unset locally: Vite
+forwards `/api` to the backend on port 8000, so requests also work from your phone.
+
+Payment tracking adds a separate `payments` table, created on backend startup
+for both new and existing databases. It does not alter existing check or item
+columns. Status is self-reported using the app's existing participant names;
+opening a payment link or QR code does not mark a share as paid.
 
 ### Docker Compose
 
@@ -90,6 +99,7 @@ docker compose up --build
 | PATCH | `/api/checks/{code}` | Update check |
 | POST | `/api/checks/{code}/claim` | Claim/unclaim a sub-item |
 | GET | `/api/checks/{code}/summary` | Get calculated totals per person |
+| PUT | `/api/checks/{code}/payment` | Set or undo a participant's paid status; checks the displayed amount and currency before marking paid |
 | POST | `/api/checks/ocr` | Process receipt image |
 
 ## Project Structure

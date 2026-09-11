@@ -10,16 +10,13 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { getCheck, claimSubItem, getCheckSummary } from "@/services/api";
-import { getCurrencySymbol, type Check, type CheckSummary, type Item } from "@/types";
-
-function getStoredName(code: string): string | null {
-  return localStorage.getItem(`checksplit_name_${code}`);
-}
-
-function setStoredName(code: string, name: string): void {
-  localStorage.setItem(`checksplit_name_${code}`, name);
-}
+import { claimSubItem, getCheckSummary } from "@/services/api";
+import { getCurrencySymbol, type Item } from "@/types";
+import { useCheckSummary } from "@/hooks/useCheckSummary";
+import { getParticipantName, storeParticipantName } from "@/lib/participant";
+import { BottomBar } from "@/components/BottomBar";
+import { PaymentActions } from "@/components/PaymentActions";
+import { PaymentStatus } from "@/components/PaymentStatus";
 
 function isSubItemClaimedByMe(item: Item, subIndex: number, myName: string): boolean {
   const claimants = item.claims[String(subIndex)] || [];
@@ -63,26 +60,12 @@ export function ViewCheck() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
 
-  const [check, setCheck] = useState<Check | null>(null);
-  const [summary, setSummary] = useState<CheckSummary | null>(null);
-  const [participantName, setParticipantName] = useState<string | null>(null);
+  const { summary, error, isLoading, isUpdating, refresh, mutate } = useCheckSummary(code);
+  const check = summary?.check;
+  const [participantName, setParticipantName] = useState<string | null>(() => code ? getParticipantName(code) : null);
   const [nameInput, setNameInput] = useState("");
   const [showSummary, setShowSummary] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isClaiming, setIsClaiming] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (!code) return;
-
-    const storedName = getStoredName(code);
-    if (storedName) {
-      setParticipantName(storedName);
-    }
-
-    loadCheck();
-  }, [code]);
 
   useEffect(() => {
     if (check) {
@@ -93,68 +76,32 @@ export function ViewCheck() {
     };
   }, [check, code]);
 
-  // Poll for updates every second
-  useEffect(() => {
-    if (!code || !participantName) return;
-
-    const interval = setInterval(async () => {
-      if (isClaiming) return; // Don't poll while claiming
-      try {
-        const [checkData, summaryData] = await Promise.all([
-          getCheck(code),
-          getCheckSummary(code),
-        ]);
-        setCheck(checkData);
-        setSummary(summaryData);
-      } catch {
-        // Silent fail for polling
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [code, participantName, isClaiming]);
-
-  const loadCheck = async () => {
-    if (!code) return;
-    try {
-      const [checkData, summaryData] = await Promise.all([
-        getCheck(code),
-        getCheckSummary(code),
-      ]);
-      setCheck(checkData);
-      setSummary(summaryData);
-    } catch {
-      setError("Failed to load check");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleSetName = () => {
     if (!nameInput.trim() || !code) return;
     const name = nameInput.trim();
-    setStoredName(code, name);
+    try {
+      storeParticipantName(code, name);
+    } catch {
+      toast.error("Allow browser storage so your name can be remembered for payment.");
+      return;
+    }
     setParticipantName(name);
   };
 
   const handleToggleSubItemClaim = async (itemId: string, subIndex: number) => {
-    if (!code || !participantName || isClaiming) return;
+    if (!code || !participantName || isUpdating) return;
 
-    setIsClaiming(true);
     try {
-      const updatedCheck = await claimSubItem(code, {
-        participant_name: participantName,
-        item_id: itemId,
-        sub_item_index: subIndex,
+      await mutate(async () => {
+        await claimSubItem(code, {
+          participant_name: participantName,
+          item_id: itemId,
+          sub_item_index: subIndex,
+        });
+        return getCheckSummary(code);
       });
-      setCheck(updatedCheck);
-
-      const summaryData = await getCheckSummary(code);
-      setSummary(summaryData);
     } catch {
-      setError("Failed to update claim");
-    } finally {
-      setIsClaiming(false);
+      toast.error("Could not update your items. Please try again.");
     }
   };
 
@@ -170,15 +117,14 @@ export function ViewCheck() {
     });
   };
 
-  const handleRefresh = () => {
-    setIsLoading(true);
-    loadCheck();
-  };
-
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/check/${code}`;
-    await navigator.clipboard.writeText(shareUrl);
-    toast.success("Link copied to clipboard");
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Link copied to clipboard");
+    } catch {
+      toast.error("Could not copy the link. You can share the check code instead.");
+    }
   };
 
   if (isLoading) {
@@ -189,7 +135,7 @@ export function ViewCheck() {
     );
   }
 
-  if (error || !check) {
+  if (!check) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <p className="text-destructive mb-4">{error || "Check not found"}</p>
@@ -224,6 +170,8 @@ export function ViewCheck() {
               value={nameInput}
               onChange={(e) => setNameInput(e.target.value)}
               placeholder="Your name"
+              maxLength={100}
+              aria-label="Your name"
               onKeyDown={(e) => e.key === "Enter" && handleSetName()}
               className="text-center text-lg h-12"
               autoFocus
@@ -239,26 +187,28 @@ export function ViewCheck() {
   }
 
   return (
-    <div className="min-h-screen p-4 pb-64">
+    <div className="min-h-screen p-4">
       <div className="max-w-md mx-auto">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold">{check.title || `Check ${code}`}</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold break-words">{check.title || `Check ${code}`}</h1>
             {check.title && (
               <p className="text-sm text-muted-foreground">#{code}</p>
             )}
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleShare}>
+            <Button variant="outline" className="min-h-12" size="sm" onClick={handleShare}>
               <Share2 className="h-4 w-4 mr-1" />
               Copy Link
             </Button>
-            <Button variant="outline" size="sm" onClick={handleRefresh}>
+            <Button variant="outline" className="min-h-12" size="sm" onClick={() => void refresh()}>
               <RefreshCw className="h-4 w-4 mr-1" />
               Refresh
             </Button>
           </div>
         </div>
+
+        {error && <p role="alert" className="mb-4 text-sm text-destructive">Could not refresh this check. Check your connection and tap Refresh.</p>}
 
         <div className="mb-2" />
 
@@ -267,7 +217,7 @@ export function ViewCheck() {
             variant={!showSummary ? "default" : "outline"}
             size="sm"
             onClick={() => setShowSummary(false)}
-            className="flex-1"
+            className="flex-1 min-h-12"
           >
             <ShoppingCart className="h-4 w-4 mr-1" />
             Claim Items
@@ -276,7 +226,7 @@ export function ViewCheck() {
             variant={showSummary ? "default" : "outline"}
             size="sm"
             onClick={() => setShowSummary(true)}
-            className="flex-1"
+            className="flex-1 min-h-12"
           >
             <PieChart className="h-4 w-4 mr-1" />
             Summary
@@ -431,13 +381,18 @@ export function ViewCheck() {
           </div>
         ) : (
           <div className="space-y-4">
+            {summary && summary.participants.length > 0 && (
+              <p className="text-sm text-muted-foreground" role="status">
+                {summary.participants.filter((p) => p.payment_status === "paid").length} of {summary.participants.length} marked paid
+              </p>
+            )}
             {summary && summary.participants.length > 0 ? (
               summary.participants.map((p) => (
-                <Card key={p.name} className={p.name === participantName ? "border-primary" : ""}>
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium">
+                <Card key={p.name} className={`py-0 ${p.name === participantName ? "border-primary" : ""}`}>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex flex-wrap justify-between items-start gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium break-words">
                           {p.name}
                           {p.name === participantName && " (You)"}
                         </p>
@@ -446,10 +401,11 @@ export function ViewCheck() {
                           {parseFloat(p.tip_share) > 0 && ` + Tip: ${symbol}${p.tip_share}`}
                         </p>
                       </div>
-                      <p className="text-xl font-bold">
+                      <p className="text-xl font-bold tabular-nums break-all">
                         {symbol}{p.total}
                       </p>
                     </div>
+                    <PaymentStatus status={p.payment_status} />
                   </CardContent>
                 </Card>
               ))
@@ -474,16 +430,15 @@ export function ViewCheck() {
       </div>
 
       {participantName && myParticipant && (
-        <Card className="fixed bottom-0 left-0 right-0 rounded-none border-x-0 border-b-0">
-          <CardContent className="p-4 max-w-md mx-auto">
-            <div className="flex justify-between items-center gap-4">
+        <BottomBar>
+            <div className="flex flex-wrap justify-between items-center gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Your total:</p>
                 <p className="text-xs text-muted-foreground">
                   {parseFloat(check.tip_amount) > 0 && "Including tip share"}
                 </p>
               </div>
-              <p className="text-3xl font-bold">
+              <p className="text-3xl font-bold tabular-nums break-all">
                 {symbol}{myParticipant.total}
               </p>
             </div>
@@ -495,11 +450,11 @@ export function ViewCheck() {
             </div>
             {check.payment_methods && (
               <Button
-                className="w-full mt-4"
-                disabled={parseFloat(myParticipant.total) === 0}
+                variant="outline"
+                className="w-full min-h-12"
                 onClick={() =>
                   navigate(
-                    `/check/${code}/pay?amount=${myParticipant.total}&name=${encodeURIComponent(participantName)}`
+                    `/check/${code}/pay`
                   )
                 }
               >
@@ -507,8 +462,10 @@ export function ViewCheck() {
                 Pay Now
               </Button>
             )}
-          </CardContent>
-        </Card>
+            {code && (
+              <PaymentActions code={code} currency={check.currency} participant={myParticipant} disabled={isUpdating || Boolean(error)} mutate={mutate} />
+            )}
+        </BottomBar>
       )}
     </div>
   );

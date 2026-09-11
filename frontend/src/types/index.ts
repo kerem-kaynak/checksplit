@@ -119,6 +119,17 @@ export interface ParticipantSummary {
   items_subtotal: string;
   tip_share: string;
   total: string;
+  payment_status: "unpaid" | "paid" | "needs_review";
+  paid_amount: string | null;
+  paid_currency: string | null;
+  paid_at: string | null;
+}
+
+export interface PaymentUpdate {
+  participant_name: string;
+  paid: boolean;
+  expected_total: string;
+  expected_currency: string;
 }
 
 export interface CheckSummary {
